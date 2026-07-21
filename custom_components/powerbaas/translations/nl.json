@@ -1,0 +1,130 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Powerbaas-apparaat toevoegen",
+        "description": "Kies welk type apparaat je wilt toevoegen.",
+        "menu_options": {
+          "p1_meter": "P1 Meter",
+          "boiler_controller": "Boiler Controller"
+        }
+      },
+      "p1_meter": {
+        "title": "Powerbaas configureren",
+        "description": "Voer het host-adres van je Powerbaas-apparaat in",
+        "data": {
+          "host": "Host-adres",
+          "name": "Naam",
+          "scan_interval": "Update-interval (seconden, 5-60)"
+        }
+      },
+      "boiler_controller": {
+        "title": "Boiler Controller Instellen",
+        "description": "Stel de Boiler Controller integratie in.",
+        "data": {
+          "name": "Integratie Naam"
+        }
+      },
+      "power_sensor": {
+        "title": "Kies Type Vermogen Sensor",
+        "description": "Kies hoe netvermogen wordt gerapporteerd in Home Assistant. Een netto (signed) sensor is één entiteit die negatief wordt bij teruglevering. Een gesplitste opstelling gebruikt twee aparte sensoren voor teruglevering (export) en afname (import).",
+        "data": {
+          "power_sensor_type": "Type vermogen sensor"
+        }
+      },
+      "power_sensor_net": {
+        "title": "Selecteer Netto Vermogen Sensor",
+        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering).",
+        "data": {
+          "power_sensor": "Netto vermogen sensor"
+        }
+      },
+      "power_sensor_split": {
+        "title": "Selecteer Teruglever- en Afname-sensor",
+        "description": "Kies twee aparte sensoren: één voor teruglevering aan het net en één voor afname van het net. Beide horen altijd 0 of positief te zijn.",
+        "data": {
+          "return_sensor": "Teruglever-sensor (export)",
+          "usage_sensor": "Afname-sensor (import)"
+        }
+      },
+      "device_config": {
+        "title": "BC Module Configureren",
+        "description": "Vul de URL of het IP-adres van je BC module in (bijv. {example_url}). Bij automatisch gevonden apparaten wordt dit veld vooringevuld.",
+        "data": {
+          "device_url": "Module Basis URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Ongeldig host-adres. Gebruik een formaat zoals http://192.168.1.100",
+      "cannot_connect": "Kan geen verbinding maken met dit host-adres. Controleer het adres en de netwerkverbinding.",
+      "no_power_sensors": "Geen vermogen sensoren gevonden in Home Assistant",
+      "entity_not_found": "De geselecteerde entiteit werd niet gevonden",
+      "invalid_url": "Geef een geldige http(s) URL op",
+      "invalid_sensor_type": "Kies netto of gesplitst",
+      "sensors_must_differ": "Teruglever- en afname-sensor moeten verschillende entiteiten zijn",
+      "cannot_connect_device": "Kan geen verbinding maken met de BC module",
+      "cannot_identify": "Kan het module ID niet bepalen",
+      "device_in_use": "Deze module is al geconfigureerd"
+    },
+    "abort": {
+      "already_configured": "Boiler Controller is al geconfigureerd",
+      "unsupported_device": "Het gevonden apparaat wordt niet ondersteund door Powerbaas",
+      "p1_already_configured": "Er is al een P1 meter geconfigureerd voor deze Powerbaas-integratie"
+    }
+  },
+  "options": {
+    "step": {
+      "p1_meter_init": {
+        "title": "Powerbaas-opties aanpassen",
+        "description": "Werk het host-adres van je Powerbaas-apparaat bij",
+        "data": {
+          "host": "Host-adres",
+          "scan_interval": "Update-interval (seconden, 5-60)"
+        }
+      },
+      "device_config": {
+        "title": "Module Instellingen Bijwerken",
+        "description": "Pas de BC module URL aan. De huidige URL wordt hier getoond.",
+        "data": {
+          "device_url": "Module Basis URL"
+        }
+      },
+      "power_sensor": {
+        "title": "Wijzig Type Vermogen Sensor",
+        "description": "Kies hoe netvermogen wordt gerapporteerd. Kies netto voor één signed sensor of gesplitst voor twee aparte teruglever-/afname-sensoren.",
+        "data": {
+          "power_sensor_type": "Type vermogen sensor"
+        }
+      },
+      "power_sensor_net": {
+        "title": "Selecteer Nieuwe Netto Vermogen Sensor",
+        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering).",
+        "data": {
+          "power_sensor": "Netto vermogen sensor"
+        }
+      },
+      "power_sensor_split": {
+        "title": "Selecteer Nieuwe Teruglever- en Afname-sensor",
+        "description": "Kies twee aparte sensoren: één voor teruglevering aan het net en één voor afname van het net.",
+        "data": {
+          "return_sensor": "Teruglever-sensor (export)",
+          "usage_sensor": "Afname-sensor (import)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Ongeldig host-adres. Gebruik een formaat zoals http://192.168.1.100",
+      "cannot_connect": "Kan geen verbinding maken met dit host-adres. Controleer het adres en de netwerkverbinding.",
+      "no_power_sensors": "Geen vermogen sensoren gevonden in Home Assistant",
+      "entity_not_found": "De geselecteerde entiteit werd niet gevonden",
+      "invalid_url": "Geef een geldige http(s) URL op",
+      "invalid_sensor_type": "Kies netto of gesplitst",
+      "sensors_must_differ": "Teruglever- en afname-sensor moeten verschillende entiteiten zijn",
+      "cannot_connect_device": "Kan geen verbinding maken met de BC module",
+      "cannot_identify": "Kan het module ID niet bepalen",
+      "device_in_use": "Deze module is al geconfigureerd"
+    }
+  }
+}
