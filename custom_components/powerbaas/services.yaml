@@ -1,0 +1,23 @@
+run_calibration:
+  name: Run Calibration
+  description: |
+    Start an automated calibration run on the BC module. The device will sweep through power levels
+    and report measured watts. Results are stored locally for future calculations.
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Optional config_entry_id when multiple Boiler Controller entries exist.
+      example: "1234567890abcdef1234567890abcdef"
+      selector:
+        text: {}
+
+cancel_calibration:
+  name: Cancel Calibration
+  description: Request the active calibration run to stop.
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Optional config_entry_id when multiple Boiler Controller entries exist.
+      example: "1234567890abcdef1234567890abcdef"
+      selector:
+        text: {}

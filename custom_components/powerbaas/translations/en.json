@@ -1,0 +1,130 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add a Powerbaas device",
+        "description": "Choose which type of device you want to add.",
+        "menu_options": {
+          "p1_meter": "P1 Meter",
+          "boiler_controller": "Boiler Controller"
+        }
+      },
+      "p1_meter": {
+        "title": "Configure Powerbaas",
+        "description": "Enter the host URL for your Powerbaas device",
+        "data": {
+          "host": "Host URL",
+          "name": "Name",
+          "scan_interval": "Update interval (seconds, 5-60)"
+        }
+      },
+      "boiler_controller": {
+        "title": "Setup Boiler Controller",
+        "description": "Set up the Boiler Controller integration.",
+        "data": {
+          "name": "Integration Name"
+        }
+      },
+      "power_sensor": {
+        "title": "Choose Power Sensor Type",
+        "description": "Pick how grid power is reported in Home Assistant. A net (signed) sensor is one entity that goes negative when exporting. A split setup uses two separate sensors for return (export) and usage (import).",
+        "data": {
+          "power_sensor_type": "Power sensor type"
+        }
+      },
+      "power_sensor_net": {
+        "title": "Select Net Power Sensor",
+        "description": "Choose a single sensor that reports net grid power (negative when exporting to the grid).",
+        "data": {
+          "power_sensor": "Net power sensor"
+        }
+      },
+      "power_sensor_split": {
+        "title": "Select Return and Usage Sensors",
+        "description": "Choose two separate sensors: one for power returned to the grid and one for power drawn from the grid. Both should always be 0 or positive.",
+        "data": {
+          "return_sensor": "Return sensor (export)",
+          "usage_sensor": "Usage sensor (import)"
+        }
+      },
+      "device_config": {
+        "title": "Configure BC Module",
+        "description": "Enter the URL or IP address of your BC module (e.g. {example_url}). Auto-discovered devices will pre-fill this field.",
+        "data": {
+          "device_url": "Module Base URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Invalid host URL format. Please use format like http://192.168.1.100",
+      "cannot_connect": "Cannot connect to the specified host. Check the URL and network connection.",
+      "no_power_sensors": "No power sensors found in Home Assistant",
+      "entity_not_found": "The selected entity was not found",
+      "invalid_url": "Provide a valid http(s) URL",
+      "invalid_sensor_type": "Pick either net or split mode",
+      "sensors_must_differ": "Return and usage sensors must be different entities",
+      "cannot_connect_device": "Unable to reach the BC module",
+      "cannot_identify": "Unable to determine the module identity",
+      "device_in_use": "This module is already configured"
+    },
+    "abort": {
+      "already_configured": "Boiler Controller is already configured",
+      "unsupported_device": "The discovered device is not a supported Powerbaas device",
+      "p1_already_configured": "A P1 meter is already configured for this Powerbaas integration"
+    }
+  },
+  "options": {
+    "step": {
+      "p1_meter_init": {
+        "title": "Configure Powerbaas Options",
+        "description": "Update the host URL for your Powerbaas device",
+        "data": {
+          "host": "Host URL",
+          "scan_interval": "Update interval (seconds, 5-60)"
+        }
+      },
+      "device_config": {
+        "title": "Update Module Settings",
+        "description": "Adjust the BC module URL. The current URL is shown here.",
+        "data": {
+          "device_url": "Module Base URL"
+        }
+      },
+      "power_sensor": {
+        "title": "Change Power Sensor Type",
+        "description": "Pick how grid power is reported. Choose net for a single signed sensor or split for two separate return/usage sensors.",
+        "data": {
+          "power_sensor_type": "Power sensor type"
+        }
+      },
+      "power_sensor_net": {
+        "title": "Select New Net Power Sensor",
+        "description": "Choose a single sensor that reports net grid power (negative when exporting).",
+        "data": {
+          "power_sensor": "Net power sensor"
+        }
+      },
+      "power_sensor_split": {
+        "title": "Select New Return and Usage Sensors",
+        "description": "Choose two separate sensors: one for power returned to the grid and one for power drawn from the grid.",
+        "data": {
+          "return_sensor": "Return sensor (export)",
+          "usage_sensor": "Usage sensor (import)"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Invalid host URL format. Please use format like http://192.168.1.100",
+      "cannot_connect": "Cannot connect to the specified host. Check the URL and network connection.",
+      "no_power_sensors": "No power sensors found in Home Assistant",
+      "entity_not_found": "The selected entity was not found",
+      "invalid_url": "Provide a valid http(s) URL",
+      "invalid_sensor_type": "Pick either net or split mode",
+      "sensors_must_differ": "Return and usage sensors must be different entities",
+      "cannot_connect_device": "Unable to reach the BC module",
+      "cannot_identify": "Unable to determine the module identity",
+      "device_in_use": "This module is already configured"
+    }
+  }
+}
