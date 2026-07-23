@@ -1,6 +1,6 @@
 # Boiler Controller
 
-Drives a Powerbaas Boiler Controller (BC) module from Home Assistant, so your boiler soaks up solar surplus instead of it being exported to the grid for (near) nothing.
+Drives a Powerbaas Boiler Controller (BC) module from Home Assistant so surplus solar power heats your boiler instead of being exported to the grid for (near) nothing.
 
 ## How it works
 
