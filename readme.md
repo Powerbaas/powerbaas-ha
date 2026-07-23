@@ -1,7 +1,6 @@
-# powerbaas-ha
-Powerbaas Home Assistant Integration
+# Powerbaas Home Assistant Integration
 
-This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports two device types, added side by side through the same integration:
+This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports one device type. More device types will be added in the future.
 
 - **P1 Meter** - monitor your energy meter, solar and dynamic tariff data
 
