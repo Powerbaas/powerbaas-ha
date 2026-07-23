@@ -1,6 +1,6 @@
 # P1 Meter
 
-Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monitor your energy meter, solar and dynamic tariff data directly in your smart home dashboard.
+Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monitor your energy meter, solar and dynamic tariff data directly in Home Assistant.
 
 ## Features
 
@@ -8,8 +8,6 @@ Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monit
 - **Solar production**: current output and total production
 - **Dynamic tariffs**: usage and return price per kWh
 - **Device page**: all sensors are grouped under a single Powerbaas device, with a separate "Diagnostics" section for WiFi strength, firmware version, uptime and last update
-- **Multiple devices**: add more than one Powerbaas device by giving each its own name during setup
-- **Smart data handling**: energy totals never drop to zero on a temporary glitch (monotonic increasing)
 
 ## Configuration
 
