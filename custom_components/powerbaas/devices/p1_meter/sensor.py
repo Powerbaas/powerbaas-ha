@@ -74,6 +74,39 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities(entities, True)
 
+
+class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
+    """High-level online/offline status, based on consecutive fetch failures."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry_id, device_name):
+        super().__init__(coordinator)
+        self._attr_name = "Status"
+        self._attr_unique_id = f"{entry_id}_status"
+        self._attr_icon = "mdi:list-status"
+
+        system_data = coordinator.data.get("system", {}) if coordinator.data else {}
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry_id)},
+            name=device_name,
+            manufacturer="Powerbaas",
+            model="P1 Meter",
+            sw_version=str(system_data.get("firmwareVersion", "Unknown")),
+            configuration_url=None,
+        )
+
+    @property
+    def available(self) -> bool:
+        # Always available - "Offline" is a state, not the absence of one.
+        return True
+
+    @property
+    def native_value(self):
+        return "Online" if self.coordinator.device_online else "Offline"
+
+
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
         super().__init__(coordinator)
@@ -102,6 +135,10 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
             # touch", so the stale Visit link would otherwise never go away.
             configuration_url=None,
         )
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.device_online
 
     @property
     def native_value(self):
