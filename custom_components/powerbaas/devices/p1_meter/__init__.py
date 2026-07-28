@@ -8,10 +8,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
-from ...const import DOMAIN
+from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
 from .const import DEFAULT_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,22 +64,56 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     if not api_url:
-        _LOGGER.error("Geen hostadres opgegeven voor Powerbaas.")
-        raise ConfigEntryNotReady("Geen hostadres beschikbaar.")
+        _LOGGER.error("No host address configured for Powerbaas.")
+        raise ConfigEntryNotReady("No host address available.")
+
+    device_name = entry.title or "Powerbaas"
+    offline_issue_id = f"p1_meter_offline_{entry.entry_id}"
+    consecutive_failures = 0
+
+    def _register_fetch_failure() -> None:
+        nonlocal consecutive_failures
+        consecutive_failures += 1
+        if consecutive_failures == OFFLINE_AFTER_CONSECUTIVE_FAILURES:
+            coordinator.device_online = False
+            _LOGGER.warning(
+                "P1 meter offline for %s after %s consecutive failed fetches",
+                device_name,
+                consecutive_failures,
+            )
+            issue_registry.async_create_issue(
+                hass,
+                DOMAIN,
+                offline_issue_id,
+                is_fixable=False,
+                severity=issue_registry.IssueSeverity.WARNING,
+                translation_key="p1_meter_offline",
+                translation_placeholders={"name": device_name},
+            )
+
+    def _register_fetch_success() -> None:
+        nonlocal consecutive_failures
+        if consecutive_failures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES:
+            coordinator.device_online = True
+            issue_registry.async_delete_issue(hass, DOMAIN, offline_issue_id)
+        consecutive_failures = 0
 
     async def async_update_data():
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-                    data["_last_update"] = datetime.now().isoformat()
-                    return data
+            session = async_get_clientsession(hass)
+            async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                response.raise_for_status()
+                data = await response.json()
+                data["_last_update"] = datetime.now().isoformat()
+                _register_fetch_success()
+                return data
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout bij het ophalen van data van Powerbaas API (%s)", api_url)
+            _LOGGER.error("Timeout while fetching data from Powerbaas API (%s)", api_url)
+            _register_fetch_failure()
             raise
         except aiohttp.ClientError as err:
-            _LOGGER.error("HTTP-fout bij het ophalen van data van Powerbaas API (%s): %s", api_url, err)
+            _LOGGER.error("HTTP error while fetching data from Powerbaas API (%s): %s", api_url, err)
+            _register_fetch_failure()
             raise
 
     coordinator = DataUpdateCoordinator(
@@ -87,6 +123,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
         update_method=async_update_data,
         update_interval=timedelta(seconds=scan_interval),
     )
+    # Entities key their availability off this instead of the coordinator's
+    # own last_update_success, so a single missed poll doesn't flip every
+    # sensor unavailable - mirrors the Boiler Controller's offline grace
+    # period (OFFLINE_AFTER_CONSECUTIVE_FAILURES).
+    coordinator.device_online = True
 
     try:
         await coordinator.async_config_entry_first_refresh()
@@ -96,10 +137,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     return {
         "coordinator": coordinator,
         "host": api_url,
-        "name": entry.title or "Powerbaas",
+        "name": device_name,
     }
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Nothing to clean up beyond the platform unload handled by the caller."""
-    return None
+    """Clear any open offline repair issue; platform unload is handled by the caller."""
+    issue_registry.async_delete_issue(hass, DOMAIN, f"p1_meter_offline_{entry.entry_id}")
