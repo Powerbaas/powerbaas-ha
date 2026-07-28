@@ -1,8 +1,9 @@
 # Powerbaas Home Assistant Integration
 
-This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports one device type. More device types will be added in the future.
+This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports two device types, added side by side through the same integration:
 
 - **P1 Meter** - monitor your energy meter, solar and dynamic tariff data
+- **Boiler Controller** - drive a boiler to soak up solar surplus
 
 ## Installation
 
@@ -29,6 +30,7 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 ## Devices
 
 - **[P1 Meter](docs/p1-meter.md)** - energy meter, solar and dynamic tariff sensors
+- **[Boiler Controller](docs/boiler-controller.md)** - control modes, calibration and the sensors/services it exposes
 
 ## Support
 

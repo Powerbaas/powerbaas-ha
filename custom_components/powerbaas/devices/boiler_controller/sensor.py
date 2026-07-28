@@ -1,11 +1,7 @@
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -14,25 +10,8 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 
-try:
-    from homeassistant.const import (
-        PERCENTAGE,
-        UnitOfEnergy,
-        UnitOfPower,
-        UnitOfTemperature,
-    )
-
-    UNIT_POWER = UnitOfPower.WATT
-    UNIT_TEMP = UnitOfTemperature.CELSIUS
-    UNIT_ENERGY = UnitOfEnergy.KILO_WATT_HOUR
-except ImportError:
-    from homeassistant.const import PERCENTAGE
-
-    UNIT_POWER = "W"
-    UNIT_TEMP = "°C"
-    UNIT_ENERGY = "kWh"
-
 from ...const import DOMAIN
+from .const import MAIN_SENSORS, DIAGNOSTIC_SENSORS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,6 +27,7 @@ def _device_info(config_entry: ConfigEntry, controller) -> Dict[str, Any]:
         "manufacturer": "Powerbaas",
         "model": "Boiler Controller",
         "sw_version": controller.device_firmware_version,
+        "configuration_url": controller.device_url,
     }
 
 
@@ -60,22 +40,26 @@ async def async_setup_entry(
 
     sensors: List[SensorEntity] = [
         BoilerControllerStatusSensor(hass, config_entry, controller),
-        *_build_power_source_sensors(hass, config_entry, controller),
         LastDimmerUpdateSensor(hass, config_entry, controller),
-        # Device sensors from /api/status
-        DevicePowerSensor(hass, config_entry, controller),
-        DeviceHeatingPercentageSensor(hass, config_entry, controller),
-        DeviceTemperatureSensor(hass, config_entry, controller),
-        DeviceEnergySensor(hass, config_entry, controller),
-        DeviceRssiSensor(hass, config_entry, controller),
-        DevicePowerSourceSensor(hass, config_entry, controller),
-        # System sensors from /api/system
-        DeviceFirmwareVersionSensor(hass, config_entry, controller),
-        DeviceWifiStrengthSensor(hass, config_entry, controller),
-        DeviceUptimeSensor(hass, config_entry, controller),
-        DeviceUpSinceSensor(hass, config_entry, controller),
-        DeviceIpSensor(hass, config_entry, controller),
     ]
+
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in (
+        MAIN_SENSORS + DIAGNOSTIC_SENSORS
+    ):
+        sensors.append(
+            BoilerControllerFieldSensor(
+                hass, config_entry, controller,
+                name=name,
+                path=path,
+                unit=unit,
+                device_class=device_class,
+                state_class=state_class,
+                multiplier=multiplier,
+                entity_category=entity_category,
+                icon=icon,
+                unique_suffix=unique_suffix,
+            )
+        )
 
     async_add_entities(sensors)
 
@@ -88,6 +72,7 @@ class BoilerControllerStatusSensor(SensorEntity):
     """High-level status sensor for the controller."""
 
     _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass, config_entry, controller) -> None:
         self.hass = hass
@@ -95,7 +80,7 @@ class BoilerControllerStatusSensor(SensorEntity):
         self.controller = controller
         self._attr_name = f"{config_entry.title} Status"
         self._attr_unique_id = f"{config_entry.entry_id}_status"
-        self._attr_icon = "mdi:thermostat"
+        self._attr_icon = "mdi:list-status"
         self._remove_callbacks: List[Callable] = []
 
     async def async_added_to_hass(self) -> None:
@@ -109,7 +94,7 @@ class BoilerControllerStatusSensor(SensorEntity):
         self._remove_callbacks.append(
             async_dispatcher_connect(
                 self.hass,
-                self.controller.get_shelly_status_signal(),
+                self.controller.get_device_status_signal(),
                 self._handle_device_update,
             )
         )
@@ -141,6 +126,8 @@ class BoilerControllerStatusSensor(SensorEntity):
 
     @property
     def state(self) -> str:
+        if not self.controller.is_device_online:
+            return "Offline"
         if self.controller.is_calibration_active:
             return "Calibration"
         status = self.controller.get_device_status() or {}
@@ -211,137 +198,6 @@ class BoilerControllerStatusSensor(SensorEntity):
         return _device_info(self.config_entry, self.controller)
 
 
-class PowerSourceMirrorSensor(SensorEntity):
-    """Mirror a single configured power source entity as a diagnostic sensor.
-
-    One instance is registered per configured source: a single sensor in
-    net mode, or two sensors (return + usage) in split mode.
-    """
-
-    _attr_should_poll = False
-    _attr_device_class = SensorDeviceClass.POWER
-    _attr_native_unit_of_measurement = "W"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(
-        self,
-        hass,
-        config_entry,
-        controller,
-        source_entity_id: str,
-        name_suffix: str,
-        unique_id_suffix: str,
-    ) -> None:
-        self.hass = hass
-        self.config_entry = config_entry
-        self.controller = controller
-        self._source_entity_id = source_entity_id
-        self._attr_name = f"{config_entry.title} {name_suffix}"
-        self._attr_unique_id = f"{config_entry.entry_id}_{unique_id_suffix}"
-        self._remove_callbacks: List[Callable] = []
-
-    async def async_added_to_hass(self) -> None:
-        self._remove_callbacks.append(
-            async_track_state_change_event(
-                self.hass,
-                [self._source_entity_id],
-                self._handle_update,
-            )
-        )
-        self.async_write_ha_state()
-
-    async def async_will_remove_from_hass(self) -> None:
-        for cb in self._remove_callbacks:
-            cb()
-        self._remove_callbacks.clear()
-
-    @callback
-    def _handle_update(self, event) -> None:
-        self.async_write_ha_state()
-
-    @property
-    def native_value(self) -> Optional[float]:
-        state = self.hass.states.get(self._source_entity_id)
-        if not state:
-            return None
-        try:
-            value = float(state.state)
-        except (ValueError, TypeError):
-            return None
-        return self._normalize_power_unit(value, self._extract_unit(state))
-
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        state = self.hass.states.get(self._source_entity_id)
-        if not state:
-            return {"source_entity": self._source_entity_id, "status": "missing"}
-        return {
-            "source_entity": self._source_entity_id,
-            "status": "available",
-            "last_changed": state.last_changed.isoformat(),
-            "last_updated": state.last_updated.isoformat(),
-            "unit": self._extract_unit(state) or "",
-        }
-
-    @staticmethod
-    def _extract_unit(state) -> str:
-        unit = state.attributes.get("unit_of_measurement") or state.attributes.get(
-            "native_unit_of_measurement"
-        )
-        return str(unit).strip() if unit else ""
-
-    @staticmethod
-    def _normalize_power_unit(power_value: float, unit: str) -> float:
-        if not unit:
-            return power_value
-        cleaned = unit.strip().lower()
-        if cleaned.startswith("kw") or "kilowatt" in cleaned:
-            return power_value * 1000
-        return power_value
-
-    @property
-    def device_info(self) -> Dict[str, Any]:
-        return _device_info(self.config_entry, self.controller)
-
-
-def _build_power_source_sensors(
-    hass, config_entry, controller
-) -> List["PowerSourceMirrorSensor"]:
-    """Return one or two mirror sensors depending on the configured mode."""
-    from .const import POWER_SENSOR_TYPE_SPLIT
-
-    if controller.power_sensor_type == POWER_SENSOR_TYPE_SPLIT:
-        return [
-            PowerSourceMirrorSensor(
-                hass,
-                config_entry,
-                controller,
-                controller.return_sensor_id,
-                name_suffix="Grid Return",
-                unique_id_suffix="return_sensor",
-            ),
-            PowerSourceMirrorSensor(
-                hass,
-                config_entry,
-                controller,
-                controller.usage_sensor_id,
-                name_suffix="Grid Usage",
-                unique_id_suffix="usage_sensor",
-            ),
-        ]
-
-    return [
-        PowerSourceMirrorSensor(
-            hass,
-            config_entry,
-            controller,
-            controller.power_sensor_id,
-            name_suffix="Net Power",
-            unique_id_suffix="power_sensor",
-        )
-    ]
-
-
 class LastDimmerUpdateSensor(SensorEntity):
     """Sensor showing when the controller last adjusted the heating percentage."""
 
@@ -369,7 +225,7 @@ class LastDimmerUpdateSensor(SensorEntity):
         self._remove_callbacks.append(
             async_dispatcher_connect(
                 self.hass,
-                self.controller.get_shelly_status_signal(),
+                self.controller.get_device_status_signal(),
                 self._handle_dispatcher_update,
             )
         )
@@ -413,14 +269,19 @@ class LastDimmerUpdateSensor(SensorEntity):
 
 
 # ---------------------------------------------------------------------------
-# BC device sensors (fed by controller polling loop)
+# Flat field-mapped sensors (fed by controller polling loop) - built from
+# MAIN_SENSORS/DIAGNOSTIC_SENSORS in const.py, mirroring the p1_meter pattern.
 # ---------------------------------------------------------------------------
 
-class DeviceSensorBase(SensorEntity):
-    """Base for sensors that subscribe to the device polling dispatcher."""
+class BoilerControllerFieldSensor(SensorEntity):
+    """Generic sensor for a single flat field from /api/status or /api/system.
+
+    Unavailable (not "unknown") whenever the root section hasn't been polled
+    yet, or the field itself is present but null - e.g. temperatureExternal
+    when no probe is mapped to that role.
+    """
 
     _attr_should_poll = False
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
         self,
@@ -428,15 +289,27 @@ class DeviceSensorBase(SensorEntity):
         config_entry,
         controller,
         *,
-        name_suffix: str,
+        name: str,
+        path: List[str],
+        unit: Optional[str],
+        device_class: Optional[str],
+        state_class: Optional[str],
+        multiplier: float,
+        entity_category: Optional[EntityCategory],
+        icon: Optional[str],
         unique_suffix: str,
-        icon: Optional[str] = None,
     ) -> None:
         self.hass = hass
         self.config_entry = config_entry
         self.controller = controller
-        self._attr_name = f"{config_entry.title} {name_suffix}"
+        self._path = path
+        self._multiplier = multiplier
+        self._attr_name = f"{config_entry.title} {name}"
         self._attr_unique_id = f"{config_entry.entry_id}_{unique_suffix}"
+        self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = device_class
+        self._attr_state_class = state_class
+        self._attr_entity_category = entity_category
         self._attr_icon = icon
         self._attr_available = False
         self._attr_native_value = None
@@ -445,7 +318,7 @@ class DeviceSensorBase(SensorEntity):
     async def async_added_to_hass(self) -> None:
         self._remove_dispatcher = async_dispatcher_connect(
             self.hass,
-            self.controller.get_shelly_status_signal(),
+            self.controller.get_device_status_signal(),
             self._handle_update,
         )
         self._refresh()
@@ -461,225 +334,29 @@ class DeviceSensorBase(SensorEntity):
         self.async_write_ha_state()
 
     def _refresh(self) -> None:
-        status = self._get_status()
-        if status is None:
-            self._attr_available = False
-            self._attr_native_value = None
-        else:
-            self._attr_available = True
-            self._attr_native_value = self._extract_value(status)
+        value = self._extract_value()
+        self._attr_available = value is not None
+        self._attr_native_value = value
 
-    def _get_status(self) -> Optional[Dict[str, Any]]:
-        return self.controller.get_device_status()
+    def _get_root(self) -> Optional[Dict[str, Any]]:
+        section = self._path[0]
+        if section == "status":
+            return self.controller.get_device_status()
+        if section == "system":
+            system_info = self.controller.get_system_status()
+            return system_info.get("system") if system_info is not None else None
+        return None
 
-    def _extract_value(self, status: Dict[str, Any]):
-        raise NotImplementedError
+    def _extract_value(self):
+        data = self._get_root()
+        for key in self._path[1:]:
+            if not isinstance(data, dict):
+                return None
+            data = data.get(key)
+        if isinstance(data, (int, float)) and self._multiplier not in (None, 1):
+            return data / self._multiplier
+        return data
 
     @property
     def device_info(self) -> Dict[str, Any]:
         return _device_info(self.config_entry, self.controller)
-
-
-class SystemSensorBase(DeviceSensorBase):
-    """Base for sensors that read from /api/system data."""
-
-    def _get_status(self) -> Optional[Dict[str, Any]]:
-        system_info = self.controller.get_system_status()
-        if system_info is None:
-            return None
-        return system_info.get("system")
-
-
-# --- /api/status sensors ---
-
-class DevicePowerSensor(DeviceSensorBase):
-    _attr_device_class = SensorDeviceClass.POWER
-    _attr_native_unit_of_measurement = UNIT_POWER
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_entity_category = None  # Show on dashboard by default
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Device Power",
-            unique_suffix="device_power",
-            icon="mdi:flash",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("power")
-        if isinstance(val, (int, float)):
-            return round(float(val), 1)
-        return None
-
-
-class DeviceHeatingPercentageSensor(DeviceSensorBase):
-    _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_entity_category = None
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Heating Percentage",
-            unique_suffix="device_heating_percentage",
-            icon="mdi:brightness-percent",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("heatingPercentage")
-        if isinstance(val, (int, float)):
-            return int(val)
-        return None
-
-
-class DeviceTemperatureSensor(DeviceSensorBase):
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UNIT_TEMP
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_entity_category = None
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Device Temperature",
-            unique_suffix="device_temperature",
-            icon="mdi:thermometer",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("temperature")
-        if isinstance(val, (int, float)):
-            return round(float(val), 1)
-        return None
-
-
-class DeviceEnergySensor(DeviceSensorBase):
-    _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_native_unit_of_measurement = UNIT_ENERGY
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Device Energy",
-            unique_suffix="device_energy",
-            icon="mdi:lightning-bolt",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("total")
-        if isinstance(val, (int, float)):
-            return round(float(val), 3)
-        return None
-
-
-class DeviceRssiSensor(DeviceSensorBase):
-    _attr_native_unit_of_measurement = "dBm"
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Device RSSI",
-            unique_suffix="device_rssi",
-            icon="mdi:wifi",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("rssi")
-        if isinstance(val, (int, float)):
-            return int(val)
-        return None
-
-
-class DevicePowerSourceSensor(DeviceSensorBase):
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Power Source",
-            unique_suffix="device_power_source",
-            icon="mdi:power-plug",
-        )
-
-    def _extract_value(self, status):
-        return status.get("measuredPowerSource")
-
-
-# --- /api/system sensors ---
-
-class DeviceFirmwareVersionSensor(SystemSensorBase):
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Firmware Version",
-            unique_suffix="device_firmware_version",
-            icon="mdi:chip",
-        )
-
-    def _extract_value(self, status):
-        return status.get("firmwareVersion")
-
-
-class DeviceWifiStrengthSensor(SystemSensorBase):
-    _attr_native_unit_of_measurement = "dBm"
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="WiFi Strength",
-            unique_suffix="device_wifi_strength",
-            icon="mdi:wifi-strength-2",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("wifiStrength")
-        if isinstance(val, (int, float)):
-            return int(val)
-        return None
-
-
-class DeviceUptimeSensor(SystemSensorBase):
-    _attr_native_unit_of_measurement = "s"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
-
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Uptime",
-            unique_suffix="device_uptime",
-            icon="mdi:timer-outline",
-        )
-
-    def _extract_value(self, status):
-        val = status.get("uptimeSeconds")
-        if isinstance(val, (int, float)):
-            return int(val)
-        return None
-
-
-class DeviceUpSinceSensor(SystemSensorBase):
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="Up Since",
-            unique_suffix="device_up_since",
-            icon="mdi:calendar-clock",
-        )
-
-    def _extract_value(self, status):
-        return status.get("upSince")
-
-
-class DeviceIpSensor(SystemSensorBase):
-    def __init__(self, hass, config_entry, controller) -> None:
-        super().__init__(
-            hass, config_entry, controller,
-            name_suffix="IP Address",
-            unique_suffix="device_ip",
-            icon="mdi:ip-network",
-        )
-
-    def _extract_value(self, status):
-        return status.get("ip")

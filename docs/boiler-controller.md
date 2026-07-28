@@ -1,6 +1,6 @@
 # Boiler Controller
 
-Drives a Powerbaas Boiler Controller (BC) module from Home Assistant, so your boiler soaks up solar surplus instead of it being exported to the grid for (near) nothing.
+Drives a Powerbaas Boiler Controller (BC) module from Home Assistant so surplus solar power heats your boiler instead of being exported to the grid for (near) nothing.
 
 ## How it works
 
@@ -42,15 +42,29 @@ Both accept an optional `config_entry_id` field, required only when you have mor
 
 ## Safety limit
 
-Requested power is always clamped to a maximum of 3500 W, regardless of control mode.
+Requested power is always clamped to the **Max Heating Power** select, which mirrors the module's own configurable ceiling (matches your meter cupboard's breaker: 3600 / 3000 / 2500 / 2000 W). The module also enforces this ceiling itself.
+
+**Minimum Heating Power** sets a floor (in watts) that's applied only in **Auto** mode - useful for boilers that need to stay powered (e.g. for WiFi) even without solar surplus. It has no effect in Manual, On, or Off mode.
+
+## SSR
+
+The module's SSR relay is independent from the heating percentage output. Toggle it with the **SSR** switch; it reflects the module's live relay state.
+
+## Offline detection
+
+If 5 consecutive `/api/status` polls fail, the module is considered offline: the **Status** sensor shows `Offline`, the **SSR** switch and the device/system sensors (power, temperature, energy, WiFi strength, etc.) go `unavailable`, instead of silently continuing to show stale data. A repair issue also appears under Settings → System → Repairs so it's easy to notice; it clears itself automatically once the module responds again. Polling keeps retrying in the background the whole time.
+
+If the module is unreachable when Home Assistant sets up (or reloads) the integration, setup fails with "Failed setup, will retry" on the Integrations page, and Home Assistant retries automatically with backoff until it responds.
 
 ## Entities created
 
 - `Control Mode` (select) - auto / manual / on / off
 - `Manual Power` (number) - target watts used in manual mode
+- `Max Heating Power` (select) - configurable safety ceiling, in watts (breaker presets)
+- `Minimum Heating Power` (number) - Auto-mode-only floor, in watts
+- `SSR` (switch) - the module's SSR relay state
 - `Calibrate Start` / `Calibrate Stop` (buttons)
-- `Status` (sensor) - high-level state (Idle / Running / Calibration / Error) plus diagnostic attributes
-- `Net Power` or `Grid Return` + `Grid Usage` (sensor) - mirrors of your configured power sensor(s)
+- `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
 - `Last Control Update` (sensor) - timestamp of the last heating adjustment
-- Device sensors read from the module's `/api/status`: power, heating percentage, temperature, energy, WiFi RSSI, power source
-- Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, uptime, up-since, IP address
+- Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
+- Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address

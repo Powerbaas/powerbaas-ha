@@ -14,11 +14,15 @@ _LOGGER = logging.getLogger(__name__)
 # API paths
 API_STATUS = "/api/status"
 API_SYSTEM = "/api/system"
-API_CONTROL = "/api/control"
+API_HEAT_WATTS = "/api/heat/watts"
+API_HEAT_PERCENTAGE = "/api/heat/percentage"
 API_CALIBRATION = "/api/calibration"
 API_CALIBRATION_RUN = "/api/calibration/run"
 API_CALIBRATION_STOP = "/api/calibration/stop"
 API_REBOOT = "/api/reboot"
+API_SSR_ON = "/api/ssr/on"
+API_SSR_OFF = "/api/ssr/off"
+API_HEAT_MAX_WATTS = "/api/heat/max-watts"
 
 
 class BCClient:
@@ -66,9 +70,9 @@ class BCClient:
         return None
 
     async def async_set_heating_percentage(self, percentage: int) -> bool:
-        """Set heating percentage (0–100) via POST /api/control."""
+        """Set heating percentage (0-100) via POST /api/heat/percentage."""
         clamped = max(0, min(100, int(percentage)))
-        url = f"{self.base_url}{API_CONTROL}"
+        url = f"{self.base_url}{API_HEAT_PERCENTAGE}"
         try:
             async with self._session.post(
                 url,
@@ -91,9 +95,9 @@ class BCClient:
         return False
 
     async def async_set_target_watts(self, watts: int) -> bool:
-        """Set target power in watts via POST /api/control."""
+        """Set target power in watts via POST /api/heat/watts."""
         clamped = max(0, int(watts))
-        url = f"{self.base_url}{API_CONTROL}"
+        url = f"{self.base_url}{API_HEAT_WATTS}"
         try:
             async with self._session.post(
                 url,
@@ -113,6 +117,54 @@ class BCClient:
             _LOGGER.warning("BC control (watts) error: %s", err)
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("Unexpected BC control (watts) error: %s", err)
+        return False
+
+    async def async_set_ssr(self, on: bool) -> Optional[bool]:
+        """Turn the SSR on/off via POST /api/ssr/on|off. Returns the device's reported state, or None on failure."""
+        url = f"{self.base_url}{API_SSR_ON if on else API_SSR_OFF}"
+        try:
+            async with self._session.post(
+                url, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                if response.status == 200:
+                    data = await response.json(content_type=None)
+                    _LOGGER.debug("BC ssr set to %s: %s", on, data)
+                    return bool(data.get("on"))
+                body = await response.text()
+                _LOGGER.warning(
+                    "BC ssr %s failed with %s: %s",
+                    "on" if on else "off",
+                    response.status,
+                    body.strip() or "<empty>",
+                )
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("BC ssr error: %s", err)
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.error("Unexpected BC ssr error: %s", err)
+        return None
+
+    async def async_set_max_heating_watts(self, watts: int) -> bool:
+        """Set the configurable max heating wattage via POST /api/heat/max-watts."""
+        url = f"{self.base_url}{API_HEAT_MAX_WATTS}"
+        try:
+            async with self._session.post(
+                url,
+                json={"watts": int(watts)},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 200:
+                    _LOGGER.debug("BC max heating watts set to %sW", watts)
+                    return True
+                body = await response.text()
+                _LOGGER.warning(
+                    "BC heat/max-watts failed with %s: %s",
+                    response.status,
+                    body.strip() or "<empty>",
+                )
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("BC heat/max-watts error: %s", err)
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.error("Unexpected BC heat/max-watts error: %s", err)
         return False
 
     async def async_test_connection(self) -> bool:

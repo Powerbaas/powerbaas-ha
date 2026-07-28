@@ -2,11 +2,12 @@ import logging
 import asyncio
 
 from homeassistant.core import HomeAssistant, Event, callback
+from homeassistant.helpers import issue_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
-from ...const import DOMAIN
+from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
 from .const import (
     CONF_POWER_SENSOR,
     CONF_POWER_SENSOR_TYPE,
@@ -25,7 +26,9 @@ from .const import (
     BOILER_MODE_OFF,
     BOILER_MODES,
     CALIBRATION_POLL_SECONDS,
-    MAX_EXPORT_WATTS,
+    MAX_HEATING_WATTS_OPTIONS,
+    DEFAULT_MAX_HEATING_WATTS,
+    DEFAULT_MIN_HEATING_WATTS,
 )
 from .bc_client import BCClient
 
@@ -47,11 +50,16 @@ class BoilerController:
         self._last_auto_update = None
         self._device_status = None
         self._system_status = None
+        self._device_online = True
+        self._consecutive_poll_failures = 0
+        self._offline_issue_id = f"boiler_controller_offline_{config_entry.entry_id}"
         self._current_dimmer_percentage: int | None = None
         self._dispatcher_signal = f"{DOMAIN}_{config_entry.entry_id}_device_status"
         self._mode_signal = f"{DOMAIN}_{config_entry.entry_id}_control_mode"
         self._manual_watts_signal = f"{DOMAIN}_{config_entry.entry_id}_manual_watts"
         self._calibration_signal = f"{DOMAIN}_{config_entry.entry_id}_calibration_state"
+        self._max_heating_watts_signal = f"{DOMAIN}_{config_entry.entry_id}_max_heating_watts"
+        self._min_heating_watts_signal = f"{DOMAIN}_{config_entry.entry_id}_min_heating_watts"
 
         # Configuration
         self.device_url = config_entry.data[CONF_DEVICE_URL]
@@ -79,8 +87,20 @@ class BoilerController:
 
         stored_mode = config_entry.options.get("control_mode", BOILER_MODE_OFF)
         self._control_mode = stored_mode if stored_mode in BOILER_MODES else BOILER_MODE_OFF
+
+        # Max heating watts mirrors the device's own maxHeatingWatts (kept in sync via
+        # polling - see _update_cached_max_heating_watts); the stored option is only the
+        # seed used before the first successful status poll.
+        stored_max_watts = config_entry.options.get("max_heating_watts", DEFAULT_MAX_HEATING_WATTS)
+        self._max_heating_watts = (
+            int(stored_max_watts) if int(stored_max_watts) in MAX_HEATING_WATTS_OPTIONS else DEFAULT_MAX_HEATING_WATTS
+        )
+
         stored_watts = config_entry.options.get("manual_watts", DEFAULT_MANUAL_WATTS)
-        self._manual_watts = max(0, min(MAX_EXPORT_WATTS, int(stored_watts)))
+        self._manual_watts = max(0, min(self._max_heating_watts, int(stored_watts)))
+
+        stored_min_watts = config_entry.options.get("min_heating_watts", DEFAULT_MIN_HEATING_WATTS)
+        self._min_heating_watts = max(0, min(self._max_heating_watts, int(stored_min_watts)))
 
         self._calibration_lock = asyncio.Lock()
         self._calibration_active = False
@@ -107,13 +127,8 @@ class BoilerController:
         # Validate entities exist (informational only, always continue)
         await self._validate_configuration()
 
-        # Test BC device connection once at startup
-        if await self.device_client.async_test_connection():
-            _LOGGER.info("BC device reachable at %s", self.device_url)
-        else:
-            _LOGGER.warning(
-                "Unable to reach BC device at %s during startup", self.device_url
-            )
+        # Note: Device reachability is gated before this is called (see __init__.py's
+        # Note: async_setup_entry, which raises ConfigEntryNotReady otherwise).
 
         # Start listening to power sensor state changes
         self._cancel_listener = async_track_state_change_event(
@@ -139,9 +154,18 @@ class BoilerController:
 
     @callback
     async def _async_power_sensor_changed(self, event: Event):
-        """Handle power sensor state changes."""
+        """Handle power sensor state changes.
+
+        Only relevant in Auto mode - Manual/On/Off targets don't depend on
+        the power sensor, so reacting to it there would just re-send the
+        same command on every sensor tick and spuriously bump
+        last_control_update.
+        """
         if self._calibration_active:
             _LOGGER.debug("Skipping power sensor update while calibration is active")
+            return
+
+        if self._control_mode != BOILER_MODE_AUTO:
             return
 
         new_state = event.data.get("new_state")
@@ -150,12 +174,11 @@ class BoilerController:
             return
 
         # Throttle auto-mode updates to once per poll_interval
-        if self._control_mode == BOILER_MODE_AUTO:
-            now = dt_util.utcnow()
-            if self._last_auto_update is not None:
-                elapsed = (now - self._last_auto_update).total_seconds()
-                if elapsed < DEFAULT_POLL_INTERVAL:
-                    return
+        now = dt_util.utcnow()
+        if self._last_auto_update is not None:
+            elapsed = (now - self._last_auto_update).total_seconds()
+            if elapsed < DEFAULT_POLL_INTERVAL:
+                return
 
         # Skip if state hasn't actually changed or is unavailable
         if (old_state and new_state.state == old_state.state) or new_state.state in (
@@ -202,6 +225,8 @@ class BoilerController:
             except asyncio.CancelledError:
                 pass
             self._poll_task = None
+        # Clear any offline issue if it exists, since the controller is being stopped
+        issue_registry.async_delete_issue(self.hass, DOMAIN, self._offline_issue_id)
 
     async def _validate_configuration(self) -> bool:
         """Validate that all configured entities exist."""
@@ -262,8 +287,12 @@ class BoilerController:
             # Available watts for the boiler is the current boiler draw plus the
             # signed surplus. When importing, surplus is negative and the boiler
             # is throttled down; when exporting it is allowed to ramp up.
+            # Note: the boiler does clamping itself to its own maxHeatingWatts,
+            # but we also clamp here to the configured max heating watts just to be safe.
             boiler_watts = self._extract_boiler_consumption()
-            available_watts = max(0, min(MAX_EXPORT_WATTS, int(boiler_watts + surplus)))
+            available_watts = max(0, min(self._max_heating_watts, int(boiler_watts + surplus)))
+            if self._min_heating_watts:
+                available_watts = max(available_watts, self._min_heating_watts)
 
             _LOGGER.debug(
                 "Auto mode: surplus=%.1fW, boiler=%.1fW, available=%dW",
@@ -367,9 +396,9 @@ class BoilerController:
 
                     status = await self.device_client.async_get_status()
                     if status is not None:
-                        self._device_status = status
-                        self._update_cached_brightness(status)
-                        async_dispatcher_send(self.hass, self._dispatcher_signal, status)
+                        self._handle_status_success(status)
+                    else:
+                        self._register_poll_failure()
 
                 await asyncio.sleep(self.poll_interval)
             except asyncio.CancelledError:
@@ -377,6 +406,7 @@ class BoilerController:
                 break
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.error("Unexpected device polling error: %s", err)
+                self._register_poll_failure()
                 await asyncio.sleep(self.poll_interval)
 
     async def _async_refresh_device_status(self):
@@ -384,12 +414,48 @@ class BoilerController:
         try:
             status = await self.device_client.async_get_status()
             if status is None:
+                self._register_poll_failure()
                 return
-            self._device_status = status
-            self._update_cached_brightness(status)
-            async_dispatcher_send(self.hass, self._dispatcher_signal, status)
+            self._handle_status_success(status)
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.debug("Manual device status refresh failed: %s", err)
+            self._register_poll_failure()
+
+    def _handle_status_success(self, status: dict) -> None:
+        """Record a successful /api/status fetch and notify listeners."""
+        self._consecutive_poll_failures = 0
+        was_offline = not self._device_online
+        self._device_online = True
+        self._device_status = status
+        self._update_cached_brightness(status)
+        self._update_cached_max_heating_watts(status)
+        async_dispatcher_send(self.hass, self._dispatcher_signal, status)
+        if was_offline:
+            _LOGGER.info("BC device back online for %s", self.config_entry.title)
+            issue_registry.async_delete_issue(self.hass, DOMAIN, self._offline_issue_id)
+
+    def _register_poll_failure(self) -> None:
+        """Track a failed /api/status fetch; flip to offline after the threshold."""
+        self._consecutive_poll_failures += 1
+        if self._device_online and self._consecutive_poll_failures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES:
+            self._device_online = False
+            self._device_status = None
+            self._system_status = None
+            _LOGGER.warning(
+                "BC device offline for %s after %s consecutive failed polls",
+                self.config_entry.title,
+                self._consecutive_poll_failures,
+            )
+            issue_registry.async_create_issue(
+                self.hass,
+                DOMAIN,
+                self._offline_issue_id,
+                is_fixable=False,
+                severity=issue_registry.IssueSeverity.WARNING,
+                translation_key="boiler_controller_offline",
+                translation_placeholders={"name": self.config_entry.title},
+            )
+            async_dispatcher_send(self.hass, self._dispatcher_signal, None)
 
     async def _set_heating_percentage(self, percentage: int, *, source: str = BOILER_MODE_AUTO):
         """Set heating percentage on the BC device."""
@@ -437,6 +503,7 @@ class BoilerController:
             "manufacturer": "Powerbaas",
             "model": "Boiler Controller",
             "sw_version": self.device_firmware_version,
+            "configuration_url": self.device_url,
         }
 
     def get_status(self):
@@ -455,7 +522,10 @@ class BoilerController:
             "poll_interval": self.poll_interval,
             "control_mode": self._control_mode,
             "manual_watts": self._manual_watts,
+            "max_heating_watts": self._max_heating_watts,
+            "min_heating_watts": self._min_heating_watts,
             "calibration_active": self._calibration_active,
+            "device_online": self._device_online,
         }
 
     def get_device_status(self):
@@ -466,8 +536,8 @@ class BoilerController:
         """Expose latest system info (/api/system)."""
         return self._system_status
 
-    def get_shelly_status_signal(self):
-        """Return dispatcher signal name for device status updates."""
+    def get_device_status_signal(self):
+        """Return dispatcher signal name for device status updates (/api/status)."""
         return self._dispatcher_signal
 
     def get_control_mode_signal(self):
@@ -477,6 +547,14 @@ class BoilerController:
     def get_manual_watts_signal(self):
         """Dispatcher signal for manual watts changes."""
         return self._manual_watts_signal
+
+    def get_max_heating_watts_signal(self):
+        """Dispatcher signal for max heating watts changes."""
+        return self._max_heating_watts_signal
+
+    def get_min_heating_watts_signal(self):
+        """Dispatcher signal for min heating watts changes."""
+        return self._min_heating_watts_signal
 
     def get_calibration_state_signal(self):
         """Dispatcher signal fired when calibration state changes."""
@@ -491,9 +569,22 @@ class BoilerController:
         return self._manual_watts
 
     @property
+    def max_heating_watts(self) -> int:
+        return self._max_heating_watts
+
+    @property
+    def min_heating_watts(self) -> int:
+        return self._min_heating_watts
+
+    @property
     def is_calibration_active(self) -> bool:
         """Return True if a calibration run is currently in progress."""
         return self._calibration_active
+
+    @property
+    def is_device_online(self) -> bool:
+        """Return False after OFFLINE_AFTER_CONSECUTIVE_FAILURES consecutive failed polls."""
+        return self._device_online
 
     async def async_request_calibration_cancel(self) -> bool:
         """Signal the active calibration run to stop after the current step."""
@@ -525,7 +616,9 @@ class BoilerController:
         """Store manual target watts and apply when manual mode is active."""
         if self._calibration_active:
             raise RuntimeError("Cannot change manual watts during calibration")
-        watts = max(0, min(MAX_EXPORT_WATTS, int(watts)))
+        # the watts are already clamped to the max heating watts
+        # but just to be safe, we clamp it again here to ensure it's within valid bounds
+        watts = max(0, min(self._max_heating_watts, int(watts)))
         if watts == self._manual_watts:
             return
         self._manual_watts = watts
@@ -540,6 +633,30 @@ class BoilerController:
         success = await self.device_client.async_set_target_watts(self._manual_watts)
         if success:
             self._last_control_update = dt_util.utcnow()
+        await self._async_refresh_device_status()
+
+    async def async_set_max_heating_watts(self, watts: int):
+        """Set the device's configurable max heating wattage (one of MAX_HEATING_WATTS_OPTIONS)."""
+        watts = int(watts)
+        if watts not in MAX_HEATING_WATTS_OPTIONS:
+            raise ValueError(f"Unsupported max heating watts: {watts}")
+        await self.device_client.async_set_max_heating_watts(watts)
+        # Pull the device's authoritative value back rather than assuming success;
+        # this also clamps min_heating_watts down if it now exceeds the new max.
+        await self._async_refresh_device_status()
+
+    async def async_set_min_heating_watts(self, watts: int):
+        """Store the min heating watts floor (HA-side only, applied in Auto mode)."""
+        watts = max(0, min(self._max_heating_watts, int(watts)))
+        if watts == self._min_heating_watts:
+            return
+        self._min_heating_watts = watts
+        self._persist_controller_options(min_heating_watts=watts)
+        async_dispatcher_send(self.hass, self._min_heating_watts_signal, watts)
+
+    async def async_set_ssr(self, on: bool):
+        """Turn the SSR relay on/off and refresh device status."""
+        await self.device_client.async_set_ssr(on)
         await self._async_refresh_device_status()
 
     async def async_run_calibration(self) -> None:
@@ -627,6 +744,32 @@ class BoilerController:
         except (TypeError, ValueError):
             return
         self._current_dimmer_percentage = parsed
+
+    def _update_cached_max_heating_watts(self, status: dict | None) -> None:
+        """Sync the local max heating watts cache from the device's status.
+
+        The device is the source of truth for maxHeatingWatts; this keeps the
+        Max Heating Power select in sync whether it changed here or was set
+        directly on the device, and clamps min_heating_watts down if needed.
+        """
+        if not status:
+            return
+        value = status.get("maxHeatingWatts")
+        if value is None:
+            return
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return
+        if parsed == self._max_heating_watts:
+            return
+        self._max_heating_watts = parsed
+        self._persist_controller_options(max_heating_watts=parsed)
+        async_dispatcher_send(self.hass, self._max_heating_watts_signal, parsed)
+        if self._min_heating_watts > parsed:
+            self._min_heating_watts = parsed
+            self._persist_controller_options(min_heating_watts=parsed)
+            async_dispatcher_send(self.hass, self._min_heating_watts_signal, parsed)
 
     def _persist_controller_options(self, **updates):
         """Store controller runtime preferences in the config entry options."""
