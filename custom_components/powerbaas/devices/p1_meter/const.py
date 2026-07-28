@@ -26,7 +26,7 @@ MAIN_SENSORS = [
     ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1, None, None),
-    ("Solar Current Output", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
+    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
     ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None),
     ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1, None, None),
     ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1, None, None),
