@@ -11,7 +11,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from ...const import DOMAIN
-from .const import MAX_EXPORT_WATTS, BOILER_MODE_MANUAL
+from .const import BOILER_MODE_MANUAL, BOILER_MODE_AUTO
 
 
 async def async_setup_entry(
@@ -21,7 +21,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up number entities for this config entry."""
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
-    async_add_entities([BoilerControllerManualBrightnessNumber(hass, config_entry, controller)])
+    async_add_entities([
+        BoilerControllerManualBrightnessNumber(hass, config_entry, controller),
+        BoilerControllerMinHeatingWattsNumber(hass, config_entry, controller),
+    ])
 
 
 class BoilerControllerManualBrightnessNumber(NumberEntity):
@@ -29,11 +32,14 @@ class BoilerControllerManualBrightnessNumber(NumberEntity):
 
     _attr_should_poll = False
     _attr_native_min_value = 0
-    _attr_native_max_value = MAX_EXPORT_WATTS
     _attr_native_step = 10
     _attr_native_unit_of_measurement = "W"
     _attr_mode = NumberMode.BOX
-    _attr_icon = "mdi:lightning-bolt"
+    _attr_icon = "mdi:flash"
+
+    @property
+    def native_max_value(self) -> float:
+        return self.controller.max_heating_watts
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
         self.hass = hass
@@ -66,6 +72,13 @@ class BoilerControllerManualBrightnessNumber(NumberEntity):
                 self._handle_calibration_state,
             )
         )
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_max_heating_watts_signal(),
+                self._handle_max_watts_update,
+            )
+        )
         self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
@@ -80,6 +93,10 @@ class BoilerControllerManualBrightnessNumber(NumberEntity):
     @callback
     def _handle_manual_watts_update(self, value: int) -> None:
         self._attr_native_value = value
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_max_watts_update(self, watts: int) -> None:
         self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
@@ -107,4 +124,104 @@ class BoilerControllerManualBrightnessNumber(NumberEntity):
             "manufacturer": "Powerbaas",
             "model": "Boiler Controller",
             "sw_version": self.controller.device_firmware_version,
+            "configuration_url": self.controller.device_url,
+        }
+
+
+class BoilerControllerMinHeatingWattsNumber(NumberEntity):
+    """Number entity exposing the min heating watts floor (Auto mode only)."""
+
+    _attr_should_poll = False
+    _attr_native_min_value = 0
+    _attr_native_step = 10
+    _attr_native_unit_of_measurement = "W"
+    _attr_mode = NumberMode.BOX
+    _attr_icon = "mdi:flash"
+
+    @property
+    def native_max_value(self) -> float:
+        return self.controller.max_heating_watts
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
+        self.hass = hass
+        self.config_entry = config_entry
+        self.controller = controller
+        self._attr_name = f"{config_entry.title} Minimum Heating Power"
+        self._attr_unique_id = f"{config_entry.entry_id}_min_heating_watts"
+        self._attr_native_value = controller.min_heating_watts
+        self._remove_callbacks: List[Callable[[], None]] = []
+
+    async def async_added_to_hass(self) -> None:
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_min_heating_watts_signal(),
+                self._handle_min_watts_update,
+            )
+        )
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_max_heating_watts_signal(),
+                self._handle_max_watts_update,
+            )
+        )
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_control_mode_signal(),
+                self._handle_mode_update,
+            )
+        )
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_calibration_state_signal(),
+                self._handle_calibration_state,
+            )
+        )
+        self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        for remove in self._remove_callbacks:
+            remove()
+        self._remove_callbacks.clear()
+
+    @callback
+    def _handle_min_watts_update(self, value: int) -> None:
+        self._attr_native_value = value
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_max_watts_update(self, watts: int) -> None:
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_mode_update(self, mode: str) -> None:
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_calibration_state(self, *_: object) -> None:
+        self.async_write_ha_state()
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.controller.async_set_min_heating_watts(int(value))
+
+    @property
+    def available(self) -> bool:
+        return (
+            super().available
+            and not self.controller.is_calibration_active
+            and self.controller.control_mode == BOILER_MODE_AUTO
+        )
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.config_entry.entry_id)},
+            "name": self.config_entry.title,
+            "manufacturer": "Powerbaas",
+            "model": "Boiler Controller",
+            "sw_version": self.controller.device_firmware_version,
+            "configuration_url": self.controller.device_url,
         }

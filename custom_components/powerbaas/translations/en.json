@@ -126,5 +126,15 @@
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured"
     }
+  },
+  "issues": {
+    "boiler_controller_offline": {
+      "title": "Boiler Controller unreachable",
+      "description": "The Boiler Controller module for \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its sensors and controls will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
+    },
+    "p1_meter_offline": {
+      "title": "P1 Meter unreachable",
+      "description": "The Powerbaas P1 meter \"{name}\" hasn't responded to several data requests in a row and is considered offline. Its sensors will show as unavailable until it responds again. Check its power and network connection - this will clear automatically once it's reachable."
+    }
   }
 }

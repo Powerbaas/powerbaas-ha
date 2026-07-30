@@ -18,6 +18,10 @@ Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monit
 
 If your device's IP address changes later, go to the integration's options to update the host without removing and re-adding it.
 
+## Offline detection
+
+If 5 consecutive data fetches fail, the device is considered offline: all sensors show as `unavailable` instead of silently keeping their last known value, and a repair issue appears under Settings → System → Repairs. It clears itself automatically once the device responds again. If the device is unreachable when Home Assistant sets up (or reloads) the integration, setup fails with "Failed setup, will retry" on the Integrations page and retries automatically with backoff.
+
 ## Upgrading from 1.1.0 to 2.0.0
 
 > **Important:** entity names changed in 2.0.0. Every entity now gets your device's name as a prefix (e.g. `sensor.power_delivered_low` becomes `sensor.powerbaas_power_delivered_low`, based on the name you gave the device during setup).
@@ -34,7 +38,7 @@ This happens automatically the first time the integration reloads after updating
 - `Voltage L1/L2/L3` - Voltage per phase (V)
 - `Current L1/L2/L3` - Current per phase (A)
 - `Power Usage L1/L2/L3` - Power usage per phase (W)
-- `Solar Current Output` - Current solar power production (W)
+- `Solar Current Power` - Current solar power production (W)
 - `Solar Total Production` - Total solar energy produced (kWh)
 - `Dynamic Tariff - Usage` / `Dynamic Tariff - Return` - Dynamic energy prices (ct/kWh)
 

@@ -4,7 +4,7 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.loader import async_get_integration
 
@@ -41,12 +41,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     # Create the controller
     controller = BoilerController(hass, entry, integration_version)
 
-    # Start the controller (handles missing entities gracefully)
-    success = await controller.async_start()
-    if not success:
-        _LOGGER.error("Failed to start Boiler Controller")
-        # Don't raise ConfigEntryNotReady - let it start and wait for entities
-        _LOGGER.warning("Boiler Controller will continue running and wait for entities to become available")
+    # Gate setup on the device being reachable right now, so an offline
+    # device shows up as "Failed setup, will retry" on the Integrations page
+    # (HA automatically retries with backoff) instead of silently succeeding.
+    if not await controller.device_client.async_test_connection():
+        raise ConfigEntryNotReady(
+            f"Device communication error occurred for {entry.title}"
+        )
+
+    await controller.async_start()
 
     await _async_register_services(hass)
 

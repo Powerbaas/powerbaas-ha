@@ -26,10 +26,20 @@ MAIN_SENSORS = [
     ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1, None, None),
-    ("Solar Current Output", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
+    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
     ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None),
     ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1, None, None),
     ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1, None, None),
+]
+
+# Combined High+Low energy totals - summed from two MAIN_SENSORS paths, so
+# they need an explicit unique_suffix (no single path to derive one from).
+# Tuple: (name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix)
+COMBINED_SENSORS = [
+    ("Energy Delivered", ["meterReading", "powerDeliverHigh"], ["meterReading", "powerDeliverLow"],
+     "kWh", "energy", "total_increasing", 1000, None, None, "energy_delivered"),
+    ("Energy Returned", ["meterReading", "powerReturnHigh"], ["meterReading", "powerReturnLow"],
+     "kWh", "energy", "total_increasing", 1000, None, None, "energy_returned"),
 ]
 
 # Diagnostic sensors - device and system information

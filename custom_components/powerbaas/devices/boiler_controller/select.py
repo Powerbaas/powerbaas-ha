@@ -11,7 +11,11 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from ...const import DOMAIN
-from .const import BOILER_MODES, BOILER_MODE_CALIBRATING
+from .const import (
+    BOILER_MODES,
+    BOILER_MODE_CALIBRATING,
+    MAX_HEATING_WATTS_OPTIONS,
+)
 
 
 async def async_setup_entry(
@@ -21,7 +25,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up select entities for this config entry."""
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
-    async_add_entities([BoilerControllerModeSelect(hass, config_entry, controller)])
+    async_add_entities([
+        BoilerControllerModeSelect(hass, config_entry, controller),
+        BoilerControllerMaxHeatingWattsSelect(hass, config_entry, controller),
+    ])
 
 
 class BoilerControllerModeSelect(SelectEntity):
@@ -92,4 +99,56 @@ class BoilerControllerModeSelect(SelectEntity):
             "manufacturer": "Powerbaas",
             "model": "Boiler Controller",
             "sw_version": self.controller.device_firmware_version,
+            "configuration_url": self.controller.device_url,
+        }
+
+
+class BoilerControllerMaxHeatingWattsSelect(SelectEntity):
+    """Select entity for the configurable max heating wattage safety ceiling."""
+
+    _attr_should_poll = False
+    _attr_options = [str(w) for w in MAX_HEATING_WATTS_OPTIONS]
+    _attr_icon = "mdi:flash-alert"
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
+        self.hass = hass
+        self.config_entry = config_entry
+        self.controller = controller
+        self._attr_name = f"{config_entry.title} Max Heating Power"
+        self._attr_unique_id = f"{config_entry.entry_id}_max_heating_watts"
+        self._attr_current_option = str(controller.max_heating_watts)
+        self._remove_callbacks: List[Callable[[], None]] = []
+
+    async def async_added_to_hass(self) -> None:
+        self._remove_callbacks.append(
+            async_dispatcher_connect(
+                self.hass,
+                self.controller.get_max_heating_watts_signal(),
+                self._handle_max_watts_update,
+            )
+        )
+        self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        for remove in self._remove_callbacks:
+            remove()
+        self._remove_callbacks.clear()
+
+    @callback
+    def _handle_max_watts_update(self, watts: int) -> None:
+        self._attr_current_option = str(watts)
+        self.async_write_ha_state()
+
+    async def async_select_option(self, option: str) -> None:
+        await self.controller.async_set_max_heating_watts(int(option))
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.config_entry.entry_id)},
+            "name": self.config_entry.title,
+            "manufacturer": "Powerbaas",
+            "model": "Boiler Controller",
+            "sw_version": self.controller.device_firmware_version,
+            "configuration_url": self.controller.device_url,
         }

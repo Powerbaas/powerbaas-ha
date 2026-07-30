@@ -126,5 +126,15 @@
       "cannot_identify": "Kan het module ID niet bepalen",
       "device_in_use": "Deze module is al geconfigureerd"
     }
+  },
+  "issues": {
+    "boiler_controller_offline": {
+      "title": "Boiler Controller onbereikbaar",
+      "description": "De Boiler Controller module voor \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. Sensoren en bedieningselementen tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    },
+    "p1_meter_offline": {
+      "title": "P1 Meter onbereikbaar",
+      "description": "De Powerbaas P1 meter \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een data-aanvraag en wordt als offline beschouwd. Sensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en netwerkverbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    }
   }
 }

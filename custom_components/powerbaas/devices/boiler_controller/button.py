@@ -96,7 +96,7 @@ class _BaseCalibrationButton(ButtonEntity):
 
 
 class BoilerCalibrationButton(_BaseCalibrationButton):
-    """Button that triggers a calibration run on the Shelly dimmer."""
+    """Button that triggers a calibration run on the BC module's heating dimmer."""
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
         super().__init__(hass, config_entry, controller)

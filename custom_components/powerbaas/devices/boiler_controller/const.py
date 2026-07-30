@@ -1,3 +1,5 @@
+from homeassistant.helpers.entity import EntityCategory
+
 STEP_POWER_SENSOR = "power_sensor"
 STEP_POWER_SENSOR_NET = "power_sensor_net"
 STEP_POWER_SENSOR_SPLIT = "power_sensor_split"
@@ -47,5 +49,31 @@ ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 # Poll interval while waiting for device calibration to complete
 CALIBRATION_POLL_SECONDS = 5
 
-# Safety limits
-MAX_EXPORT_WATTS = 3500
+# Max heating watts presets
+MAX_HEATING_WATTS_OPTIONS = [3500, 3000, 2500, 2000, 1500]
+DEFAULT_MAX_HEATING_WATTS = 2000
+
+# Min heating watts floor (HA-side only, applied in Auto mode)
+DEFAULT_MIN_HEATING_WATTS = 0
+
+# Flat field-mapped sensors, built by a single generic entity in sensor.py
+# Tuple: (name, path, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix)
+#
+# path[0] selects the root: "status" -> /api/status, "system" -> /api/system's "system" object.
+# unique_suffix is independent from path (unlike p1_meter) so it can preserve
+# today's already-live entity IDs even where they don't match the JSON field name.
+MAIN_SENSORS = [
+    ("Device Power", ["status", "power"], "W", "power", "measurement", 1, None, "mdi:flash", "device_power"),
+    ("Heating Percentage", ["status", "heatingPercentage"], "%", None, "measurement", 1, None, "mdi:brightness-percent", "device_heating_percentage"),
+    ("Internal Temperature", ["status", "temperature"], "°C", "temperature", "measurement", 1, None, "mdi:thermometer", "device_temperature"),
+    ("External Temperature", ["status", "temperatureExternal"], "°C", "temperature", "measurement", 1, None, "mdi:thermometer", "device_temperature_external"),
+    ("Device Energy", ["status", "total"], "kWh", "energy", "total_increasing", 1000, None, "mdi:lightning-bolt", "device_energy"),
+]
+
+# Note: upSince is a duration string ("Xh MMm SSs"), not an ISO timestamp - keep device_class None.
+DIAGNOSTIC_SENSORS = [
+    ("Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip", "device_firmware_version"),
+    ("WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", "device_wifi_strength"),
+    ("Up Since", ["system", "upSince"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", "device_up_since"),
+    ("IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", "device_ip"),
+]
