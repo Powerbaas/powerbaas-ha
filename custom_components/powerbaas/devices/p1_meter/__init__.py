@@ -11,7 +11,6 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 
 from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
 from .const import DEFAULT_SCAN_INTERVAL
@@ -22,15 +21,15 @@ LEGACY_UNIQUE_ID_PREFIX = f"{DOMAIN}_"
 
 
 def migrate_legacy_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Move entities created before the per-device unique_id/entity_id scheme.
+    """Move entities created before the per-device unique_id scheme.
 
     Old unique_id: "powerbaas_<path>" (no entry_id -> orphaned once we switched
-    to "<entry_id>_<path>" to support multiple devices). Renaming here keeps the
-    existing entity_id/history/automations instead of creating a duplicate entity.
+    to "<entry_id>_<path>" to support multiple devices). Only the unique_id is
+    touched, entity_id is left as-is - it may already be customized by the user,
+    and there's nothing in the registry that tells us whether it was.
     """
     registry = er.async_get(hass)
     new_prefix = f"{entry.entry_id}_"
-    device_slug = slugify(entry.title or DOMAIN)
 
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if reg_entry.platform != DOMAIN:
@@ -41,21 +40,24 @@ def migrate_legacy_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
             continue
 
         suffix = reg_entry.unique_id[len(LEGACY_UNIQUE_ID_PREFIX):]
-        updates = {"new_unique_id": f"{new_prefix}{suffix}"}
+        new_unique_id = f"{new_prefix}{suffix}"
 
-        domain, object_id = reg_entry.entity_id.split(".", 1)
-        if not object_id.startswith(f"{device_slug}_"):
-            new_entity_id = f"{domain}.{device_slug}_{object_id}"
-            if not registry.async_get(new_entity_id):
-                updates["new_entity_id"] = new_entity_id
+        try:
+            registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
+        except ValueError as err:
+            _LOGGER.error(
+                "Failed to migrate Powerbaas entity %s to unique_id=%s: %s",
+                reg_entry.entity_id,
+                new_unique_id,
+                err,
+            )
+            continue
 
         _LOGGER.info(
-            "Migrating legacy Powerbaas entity %s to unique_id=%s entity_id=%s",
+            "Migrated legacy Powerbaas entity %s to unique_id=%s",
             reg_entry.entity_id,
-            updates["new_unique_id"],
-            updates.get("new_entity_id", reg_entry.entity_id),
+            new_unique_id,
         )
-        registry.async_update_entity(reg_entry.entity_id, **updates)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:

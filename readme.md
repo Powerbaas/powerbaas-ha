@@ -23,6 +23,15 @@ This Home Assistant integration connects your Powerbaas devices to Home Assistan
 3. Go to Settings → Devices & Services → Add Integration
 4. Search for "Powerbaas" and add it
 
+### Upgrading from the old manual setup
+
+If you previously set up Powerbaas in Home Assistant following the [Powerbaas FAQ](https://www.powerbaas.nl/faq/2070705_hoe-koppel-ik-powerbaas-aan-home-assistant) using either the manual YAML `sensor`/`template` configuration, or the old `XiloXL/powerbaas-home-assistant-hacs` custom repository, remove that setup before installing this integration:
+
+- **Manual YAML**: remove the `sensor`/`template` includes and files you added to `configuration.yaml`
+- **Old HACS repository**: remove the `XiloXL/powerbaas-home-assistant-hacs` custom repository and integration
+
+This integration replaces both — keeping the old setup alongside it will create duplicate sensors for the same device.
+
 ### Adding a device
 
 Go to Settings → Devices & Services → Add Integration → search for "Powerbaas". You'll be asked which type of device to add - repeat this for each additional device, of either type, that you want to configure.
