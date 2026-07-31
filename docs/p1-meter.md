@@ -24,9 +24,9 @@ If 5 consecutive data fetches fail, the device is considered offline: all sensor
 
 ## Upgrading from 1.1.0 to 2.0.0
 
-> **Important:** entity names changed in 2.0.0. Every entity now gets your device's name as a prefix (e.g. `sensor.power_delivered_low` becomes `sensor.powerbaas_power_delivered_low`, based on the name you gave the device during setup).
+2.0.0 adds support for multiple devices, so each entity's internal `unique_id` now includes the device's config entry ID instead of being shared across all installs. This migration happens automatically the first time the integration reloads after updating.
 
-This happens automatically the first time the integration reloads after updating — your existing entities are renamed in place, so their history, statistics and `unique_id` are preserved, no duplicates are created. However, **any automation, script or dashboard card that references the old entity ID directly will need to be updated** to the new, prefixed entity ID.
+Your entity IDs, history, statistics, automations and dashboards are **not** affected — only the internal `unique_id` changes, so no duplicate entities are created and there's nothing you need to update.
 
 ## Sensors Created
 
