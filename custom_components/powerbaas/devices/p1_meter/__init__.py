@@ -1,7 +1,7 @@
 """P1 meter device support for the Powerbaas integration."""
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import aiohttp
 from homeassistant.core import HomeAssistant
@@ -106,7 +106,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
             async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 response.raise_for_status()
                 data = await response.json()
-                data["_last_update"] = datetime.now().isoformat()
                 _register_fetch_success()
                 return data
         except asyncio.TimeoutError:

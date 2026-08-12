@@ -47,6 +47,5 @@ DIAGNOSTIC_SENSORS = [
     ("Powerbaas WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2"),
     ("Powerbaas Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip"),
     ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock"),
-    ("Powerbaas Last Updated", ["_last_update"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:clock-outline"),
     ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network"),
 ]

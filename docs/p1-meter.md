@@ -46,5 +46,4 @@ Your entity IDs, history, statistics, automations and dashboards are **not** aff
 - `Powerbaas WiFi Strength` - WiFi signal strength (dBm)
 - `Powerbaas Firmware Version` - Firmware version
 - `Powerbaas Uptime` - Device boot time (timestamp)
-- `Powerbaas Last Updated` - Last data fetch timestamp
 - `Powerbaas IP Address` - Device's current IP address
