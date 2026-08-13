@@ -1,0 +1,7 @@
+# Runtime/test dependency pin. manifest.json's own "requirements" is
+# intentionally empty (Home Assistant provides aiohttp/voluptuous/etc. at
+# runtime) - this file exists so the test environment pins a known-good
+# Home Assistant version to install pytest-homeassistant-custom-component
+# against. Install alongside requirements_test.txt:
+#   pip install -r requirements.txt -r requirements_test.txt
+homeassistant==2026.8.1
