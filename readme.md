@@ -8,14 +8,14 @@ This Home Assistant integration connects your Powerbaas devices to Home Assistan
 ## Installation
 
 ### Via HACS (Recommended)
-1. Open HACS in Home Assistant
-2. Go to "Integrations"
-3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add this repository URL
-6. Select "Integration" as category
-7. Click "Add"
-8. Find "Powerbaas" in the integration list and install it
+1. Navigate to HACS → Integrations → "+ Explore & Download Repos"
+2. Search for "Powerbaas"
+3. Click on the result and select "Download this Repository with HACS"
+4. Refresh your browser (due to a known HA bug that may not update the integration list immediately)
+5. Go to "Settings" in the Home Assistant sidebar, then select "Devices & Services"
+6. Click the blue "+ Add Integration" button at the bottom right, search for "Powerbaas", and install it
+
+   [![Set up a new integration in Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=powerbaas)
 
 ### Manual Installation
 1. Copy the `custom_components/powerbaas` folder to your Home Assistant `custom_components` directory
@@ -38,8 +38,8 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 
 ## Devices
 
-- **[P1 Meter](docs/p1-meter.md)** - energy meter, solar and dynamic tariff sensors
-- **[Boiler Controller](docs/boiler-controller.md)** - control modes, calibration and the sensors/services it exposes
+- **[P1 Meter](docs/p1-meter.md)** - reads your smart meter (P1 port) and exposes power, energy and dynamic tariff sensors in Home Assistant
+- **[Boiler Controller](docs/boiler-controller.md)** - controls a Powerbaas Boiler Controller module, using your extra solar power to heat your boiler instead of sending it back to the grid
 
 ## Development & Testing
 
