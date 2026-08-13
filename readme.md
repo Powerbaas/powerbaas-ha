@@ -41,6 +41,28 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 - **[P1 Meter](docs/p1-meter.md)** - energy meter, solar and dynamic tariff sensors
 - **[Boiler Controller](docs/boiler-controller.md)** - control modes, calibration and the sensors/services it exposes
 
+## Development & Testing
+
+```bash
+pip install -r requirements.txt -r requirements_test.txt
+
+# Whole suite
+pytest
+
+# One device's tests
+pytest tests/boiler_controller -v
+pytest tests/p1_meter -v
+
+# One file / one test
+pytest tests/boiler_controller/test_controller.py -v
+pytest tests/boiler_controller/test_controller.py::test_async_update_auto_mode_clamps_to_max_heating_watts -v
+```
+
+Tests live under `tests/<device_type>/`, mirroring
+`custom_components/powerbaas/devices/<device_type>/`. If you're fixing a bug,
+see `CLAUDE.md`'s "Testing" section for the reproduce-first workflow this
+repo follows.
+
 ## Support
 
 For issues related to this Home Assistant integration, please use the GitHub Issues page of this repository.
