@@ -7,6 +7,8 @@ This Home Assistant integration connects your Powerbaas devices to Home Assistan
 
 ## Installation
 
+TEST
+
 ### Via HACS (Recommended)
 1. Navigate to HACS → Integrations → "+ Explore & Download Repos"
 2. Search for "Powerbaas"
