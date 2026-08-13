@@ -4,6 +4,12 @@ DEFAULT_SCAN_INTERVAL = 15
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 60
 
+# HTTP request timeout scales with scan_interval so a slow/hung request can't
+# dominate the poll cycle - clamped to stay sane at either end of the range.
+TIMEOUT_RATIO = 0.6
+MIN_TIMEOUT = 3
+MAX_TIMEOUT = 10
+
 # P1 meter mDNS hostname (fixed - unlike the Boiler Controller, every unit
 # advertises the same "powerbaas.local" name)
 P1_MDNS_HOSTNAME = "powerbaas"

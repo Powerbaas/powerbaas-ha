@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
-from .const import DEFAULT_SCAN_INTERVAL
+from .const import DEFAULT_SCAN_INTERVAL, MIN_TIMEOUT, MAX_TIMEOUT, TIMEOUT_RATIO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     """Set up a P1 meter device and return its runtime data."""
     api_url = entry.data.get("host")
     scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+    request_timeout = max(MIN_TIMEOUT, min(MAX_TIMEOUT, scan_interval * TIMEOUT_RATIO))
 
     if not api_url:
         _LOGGER.error("No host address configured for Powerbaas.")
@@ -103,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     async def async_update_data():
         try:
             session = async_get_clientsession(hass)
-            async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=request_timeout)) as response:
                 response.raise_for_status()
                 data = await response.json()
                 _register_fetch_success()
