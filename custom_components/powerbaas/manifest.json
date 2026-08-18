@@ -13,6 +13,7 @@
   "zeroconf": [
     { "type": "_http._tcp.local.", "name": "pb-bc-*" },
     { "type": "_http._tcp.local.", "name": "pb-airco-*" },
+    { "type": "_http._tcp.local.", "name": "pb-rgb-*" },
     { "type": "_http._tcp.local.", "name": "powerbaas*" }
   ]
 }

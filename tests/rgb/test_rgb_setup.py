@@ -1,0 +1,169 @@
+"""Tests for the Powerbaas RGB async_setup_entry (coordinator wiring and offline detection)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import aiohttp
+import pytest
+from homeassistant.config_entries import ConfigEntryState, current_entry
+from homeassistant.exceptions import ConfigEntryNotReady
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.powerbaas.const import (
+    CONF_DEVICE_TYPE,
+    DEVICE_TYPE_RGB,
+    DOMAIN,
+    OFFLINE_AFTER_CONSECUTIVE_FAILURES,
+)
+from custom_components.powerbaas.devices.rgb import async_setup_entry
+from custom_components.powerbaas.devices.rgb.const import CONF_DEVICE_URL
+
+
+class _FakeResponse:
+    def __init__(self, json_data: Any, status: int = 200) -> None:
+        self.status = status
+        self._json_data = json_data
+
+    async def json(self, content_type=None):  # noqa: ANN001
+        return self._json_data
+
+    async def text(self):
+        return ""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc_info):
+        return False
+
+
+class _FakeSession:
+    """Serves queued responses/exceptions in order for every `.get()` call."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self._queue: list[tuple[Any, int, Exception | None]] = []
+
+    def queue_response(self, json_data: Any, status: int = 200) -> None:
+        self._queue.append((json_data, status, None))
+
+    def queue_exception(self, exc: Exception) -> None:
+        self._queue.append((None, 0, exc))
+
+    def get(self, url: str, timeout=None, params=None):  # noqa: ANN001
+        self.calls.append(url)
+        json_data, status, exc = self._queue.pop(0) if self._queue else ({}, 200, None)
+        if exc is not None:
+            raise exc
+        return _FakeResponse(json_data, status)
+
+
+def _make_entry(hass, *, device_url: str = "http://rgb.local"):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_DEVICE_TYPE: DEVICE_TYPE_RGB,
+            CONF_DEVICE_URL: device_url,
+            "device_id": "pb-rgb-test",
+        },
+        title="Powerbaas RGB",
+    )
+    entry.add_to_hass(hass)
+    entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
+    return entry
+
+
+async def _call_async_setup_entry(hass, entry):
+    token = current_entry.set(entry)
+    try:
+        return await async_setup_entry(hass, entry)
+    finally:
+        current_entry.reset(token)
+
+
+def _queue_successful_setup(session: _FakeSession) -> None:
+    # test_connection -> /api/status
+    session.queue_response({"rgb": {"ison": True, "brightness": 128, "solidR": 255, "solidG": 0, "solidB": 0}})
+    # first refresh: /api/status then /api/system
+    session.queue_response({"rgb": {"ison": True, "brightness": 128, "solidR": 255, "solidG": 0, "solidB": 0}})
+    session.queue_response({"system": {"firmwareVersion": 1, "ip": "192.168.1.10", "mode": "Standalone"}})
+
+
+async def test_async_setup_entry_returns_working_coordinator(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.rgb.client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+
+    coordinator = result["coordinator"]
+    assert coordinator.data["rgb"]["brightness"] == 128
+    assert coordinator.data["system"]["firmwareVersion"] == 1
+    assert coordinator.data["system"]["mode"] == "Standalone"
+    assert coordinator.device_online is True
+
+
+async def test_async_setup_entry_raises_config_entry_not_ready_on_first_failure(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_exception(aiohttp.ClientError("boom"))
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.rgb.client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    with pytest.raises(ConfigEntryNotReady):
+        await _call_async_setup_entry(hass, _make_entry(hass))
+
+
+async def test_coordinator_goes_offline_after_consecutive_failures(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.rgb.client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+    coordinator = result["coordinator"]
+    assert coordinator.device_online is True
+
+    for _ in range(OFFLINE_AFTER_CONSECUTIVE_FAILURES):
+        session.queue_exception(aiohttp.ClientError("boom"))
+        await coordinator.async_refresh()
+
+    assert coordinator.device_online is False
+
+
+async def test_coordinator_recovers_after_successful_fetch(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.rgb.client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+    coordinator = result["coordinator"]
+
+    for _ in range(OFFLINE_AFTER_CONSECUTIVE_FAILURES):
+        session.queue_exception(aiohttp.ClientError("boom"))
+        await coordinator.async_refresh()
+    assert coordinator.device_online is False
+
+    session.queue_response({"rgb": {"ison": False}})
+    session.queue_response({"system": {"firmwareVersion": 1}})
+    await coordinator.async_refresh()
+
+    assert coordinator.device_online is True

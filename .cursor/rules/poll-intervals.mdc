@@ -12,4 +12,6 @@ Boiler Controller's `poll_interval` is read from config entry data (`CONF_POLL_I
 
 Airco Bridge's poll interval is the same kind of fixed default (`DEFAULT_POLL_INTERVAL` 10s in `airco_bridge/const.py`) — there is no config/options flow field for it.
 
+Powerbaas RGB's poll interval is the same kind of fixed default (`DEFAULT_POLL_INTERVAL` 10s in `rgb/const.py`) — there is no config/options flow field for it.
+
 Anything that scales off a device's poll/scan interval (e.g. request timeouts) can only use a real setting on the P1 meter.

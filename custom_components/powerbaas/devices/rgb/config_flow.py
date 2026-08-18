@@ -1,4 +1,4 @@
-"""Config flow steps for the Airco Bridge device type."""
+"""Config flow steps for the Powerbaas RGB device type."""
 import logging
 from urllib.parse import urlparse
 
@@ -11,16 +11,16 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from ...const import (
     DOMAIN,
     CONF_DEVICE_TYPE,
-    DEVICE_TYPE_AIRCO_BRIDGE,
+    DEVICE_TYPE_RGB,
     config_entry_unique_id,
 )
-from .const import AIRCO_HOST_PREFIX, CONF_DEVICE_ID, CONF_DEVICE_URL, DEFAULT_NAME
+from .const import RGB_HOST_PREFIX, CONF_DEVICE_ID, CONF_DEVICE_URL, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_id: str | None = None):
-    """Return an existing entry that already manages this Airco Bridge."""
+    """Return an existing entry that already manages this Powerbaas RGB."""
     if not device_id:
         return None
 
@@ -28,13 +28,13 @@ def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_
     for entry in hass.config_entries.async_entries(DOMAIN):
         if exclude_entry_id and entry.entry_id == exclude_entry_id:
             continue
-        if entry.data.get(CONF_DEVICE_TYPE) != DEVICE_TYPE_AIRCO_BRIDGE:
+        if entry.data.get(CONF_DEVICE_TYPE) != DEVICE_TYPE_RGB:
             continue
         entry_device_id = entry.data.get(CONF_DEVICE_ID)
         if entry_device_id and entry_device_id.lower() == normalized:
             return entry
         unique_id = (entry.unique_id or "").lower()
-        if unique_id in (normalized, config_entry_unique_id(DEVICE_TYPE_AIRCO_BRIDGE, normalized)):
+        if unique_id in (normalized, config_entry_unique_id(DEVICE_TYPE_RGB, normalized)):
             return entry
 
     return None
@@ -55,13 +55,13 @@ def _device_id_from_url(url: str) -> str | None:
     return host
 
 
-class AircoBridgeFlowMixin:
-    """Config flow steps for adding an Airco Bridge."""
+class RgbFlowMixin:
+    """Config flow steps for adding an Powerbaas RGB."""
 
     def _normalize_url(self, url: str) -> str:
         return url.strip().rstrip("/") if url else url
 
-    async def _test_airco_connection(self, url: str) -> bool:
+    async def _test_rgb_connection(self, url: str) -> bool:
         """Test connectivity by calling /api/status."""
         try:
             session = async_get_clientsession(self.hass)
@@ -70,25 +70,25 @@ class AircoBridgeFlowMixin:
             ) as resp:
                 return resp.status == 200
         except aiohttp.ClientError as err:
-            _LOGGER.warning("Airco Bridge connection error: %s", err)
+            _LOGGER.warning("Powerbaas RGB connection error: %s", err)
         except Exception as err:  # pragma: no cover
-            _LOGGER.error("Unexpected Airco Bridge test error: %s", err)
+            _LOGGER.error("Unexpected Powerbaas RGB test error: %s", err)
         return False
 
-    def _airco_id_from_hostname_or_url(self, url: str, hostname: str | None = None) -> str | None:
-        """Prefer a pb-airco-* hostname; otherwise keep host:port from the URL.
+    def _rgb_id_from_hostname_or_url(self, url: str, hostname: str | None = None) -> str | None:
+        """Prefer a pb-rgb-* hostname; otherwise keep host:port from the URL.
 
         Named uniquely so Boiler Controller's ``_derive_device_id`` (which
         strips ports) cannot win on the shared ConfigFlow MRO.
         """
         if hostname:
             short = _short_hostname(hostname)
-            if short and any(short.startswith(prefix) for prefix in AIRCO_HOST_PREFIX):
+            if short and any(short.startswith(prefix) for prefix in RGB_HOST_PREFIX):
                 return short
         return _device_id_from_url(url) if url else None
 
-    async def _async_fetch_airco_system_hostname(self, url: str) -> str | None:
-        """Read ``system.hostname`` (pb-airco-…) when the firmware exposes it."""
+    async def _async_fetch_rgb_system_hostname(self, url: str) -> str | None:
+        """Read ``system.hostname`` (pb-rgb-…) when the firmware exposes it."""
         try:
             session = async_get_clientsession(self.hass)
             async with session.get(
@@ -103,21 +103,21 @@ class AircoBridgeFlowMixin:
         if not hostname:
             return None
         short = _short_hostname(str(hostname))
-        if any(short.startswith(prefix) for prefix in AIRCO_HOST_PREFIX):
+        if any(short.startswith(prefix) for prefix in RGB_HOST_PREFIX):
             return short
         return None
 
-    async def _async_airco_device_id_for_url(self, url: str, hostname: str | None = None) -> str | None:
-        if hostname and any(_short_hostname(hostname).startswith(p) for p in AIRCO_HOST_PREFIX):
-            return self._airco_id_from_hostname_or_url(url, hostname)
-        system_hostname = await self._async_fetch_airco_system_hostname(url)
-        return self._airco_id_from_hostname_or_url(url, system_hostname)
+    async def _async_rgb_device_id_for_url(self, url: str, hostname: str | None = None) -> str | None:
+        if hostname and any(_short_hostname(hostname).startswith(p) for p in RGB_HOST_PREFIX):
+            return self._rgb_id_from_hostname_or_url(url, hostname)
+        system_hostname = await self._async_fetch_rgb_system_hostname(url)
+        return self._rgb_id_from_hostname_or_url(url, system_hostname)
 
-    async def _async_zeroconf_airco_bridge(self, discovery_info: ZeroconfServiceInfo):
-        """Handle Zeroconf discovery for pb-airco-* bridges.
+    async def _async_zeroconf_rgb(self, discovery_info: ZeroconfServiceInfo):
+        """Handle Zeroconf discovery for pb-rgb-* rings.
 
         Called by ``PowerbaasConfigFlow.async_step_zeroconf`` after it
-        determines the discovered hostname belongs to an Airco Bridge;
+        determines the discovered hostname belongs to an Powerbaas RGB;
         not a direct HA entry point itself since only one class in the
         flow's MRO can own ``async_step_zeroconf``.
         """
@@ -128,7 +128,7 @@ class AircoBridgeFlowMixin:
 
         hostname = hostname.rstrip(".")
         short_hostname = hostname.split(".")[0].lower()
-        if not any(short_hostname.startswith(prefix) for prefix in AIRCO_HOST_PREFIX):
+        if not any(short_hostname.startswith(prefix) for prefix in RGB_HOST_PREFIX):
             return self.async_abort(reason="unsupported_device")
 
         ip_address = str(discovery_info.host) if discovery_info.host else None
@@ -139,32 +139,32 @@ class AircoBridgeFlowMixin:
         if existing_entry:
             return self.async_abort(reason="already_configured")
 
-        await self.async_set_unique_id(config_entry_unique_id(DEVICE_TYPE_AIRCO_BRIDGE, device_id))
+        await self.async_set_unique_id(config_entry_unique_id(DEVICE_TYPE_RGB, device_id))
         self._abort_if_unique_id_configured(updates={CONF_DEVICE_URL: device_url})
 
         self.data[CONF_DEVICE_URL] = device_url
         self.data[CONF_DEVICE_ID] = device_id
-        self.context["title_placeholders"] = {"name": f"Airco Bridge ({short_hostname})"}
+        self.context["title_placeholders"] = {"name": f"Powerbaas RGB ({short_hostname})"}
 
-        return await self.async_step_airco_bridge()
+        return await self.async_step_rgb()
 
-    async def async_step_airco_bridge(self, user_input=None):
-        """Handle the initial step for adding an Airco Bridge."""
+    async def async_step_rgb(self, user_input=None):
+        """Handle the initial step for adding an Powerbaas RGB."""
         self.data = getattr(self, "data", {})
-        self.data[CONF_DEVICE_TYPE] = DEVICE_TYPE_AIRCO_BRIDGE
+        self.data[CONF_DEVICE_TYPE] = DEVICE_TYPE_RGB
         errors = {}
 
         if user_input is not None:
             self.data.update(user_input)
-            return await self.async_step_airco_device_config()
+            return await self.async_step_rgb_device_config()
 
         schema = vol.Schema({
             vol.Required("name", default=self.data.get("name", DEFAULT_NAME)): str,
         })
-        return self.async_show_form(step_id="airco_bridge", data_schema=schema, errors=errors)
+        return self.async_show_form(step_id="rgb", data_schema=schema, errors=errors)
 
-    async def async_step_airco_device_config(self, user_input=None):
-        """Handle Airco Bridge connection configuration."""
+    async def async_step_rgb_device_config(self, user_input=None):
+        """Handle Powerbaas RGB connection configuration."""
         errors = {}
         stored_url = self.data.get(CONF_DEVICE_URL, "")
         default_url = self._normalize_url(stored_url)
@@ -174,10 +174,10 @@ class AircoBridgeFlowMixin:
 
             if not device_url.startswith(("http://", "https://")):
                 errors[CONF_DEVICE_URL] = "invalid_url"
-            elif not await self._test_airco_connection(device_url):
-                errors[CONF_DEVICE_URL] = "cannot_connect_airco"
+            elif not await self._test_rgb_connection(device_url):
+                errors[CONF_DEVICE_URL] = "cannot_connect_rgb"
             else:
-                device_id = await self._async_airco_device_id_for_url(
+                device_id = await self._async_rgb_device_id_for_url(
                     device_url, self.data.get(CONF_DEVICE_ID)
                 )
                 if not device_id:
@@ -187,7 +187,7 @@ class AircoBridgeFlowMixin:
                     if existing_entry:
                         return self.async_abort(reason="already_configured")
 
-                    unique_id = config_entry_unique_id(DEVICE_TYPE_AIRCO_BRIDGE, device_id)
+                    unique_id = config_entry_unique_id(DEVICE_TYPE_RGB, device_id)
                     if self.unique_id is None:
                         await self.async_set_unique_id(unique_id)
                     self._abort_if_unique_id_configured()
@@ -206,36 +206,36 @@ class AircoBridgeFlowMixin:
             vol.Required(CONF_DEVICE_URL, default=default_url): str
         })
         return self.async_show_form(
-            step_id="airco_device_config",
+            step_id="rgb_device_config",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"example_url": "http://pb-airco-xxxx.local"},
+            description_placeholders={"example_url": "http://pb-rgb-xxxx.local"},
         )
 
 
-class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Airco Bridge.
+class RgbOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Powerbaas RGB.
 
     The entry-point method must be named ``async_step_init`` (Home Assistant
     calls it by that fixed name), but the step_id used for the first form is
-    namespaced as "airco_bridge_init" so it doesn't collide with other
-    Powerbaas device types sharing this domain's options flow.
+    namespaced as "rgb_init" so it doesn't collide with other Powerbaas
+    device types sharing this domain's options flow.
     """
 
     def __init__(self, config_entry):
         super().__init__()
         self._config_entry = config_entry
 
-    async def async_step_airco_bridge_init(self, user_input=None):
+    async def async_step_rgb_init(self, user_input=None):
         """Mandatory HA entry point; has no form of its own."""
-        return await self.async_step_airco_device_config(user_input)
+        return await self.async_step_rgb_device_config(user_input)
 
-    async_step_init = async_step_airco_bridge_init
+    async_step_init = async_step_rgb_init
 
     def _normalize_url(self, url: str) -> str:
         return url.strip().rstrip("/") if url else url
 
-    async def _test_airco_connection(self, url: str) -> bool:
+    async def _test_rgb_connection(self, url: str) -> bool:
         try:
             session = async_get_clientsession(self.hass)
             async with session.get(
@@ -243,19 +243,19 @@ class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
             ) as resp:
                 return resp.status == 200
         except aiohttp.ClientError as err:
-            _LOGGER.warning("Airco Bridge connection error: %s", err)
+            _LOGGER.warning("Powerbaas RGB connection error: %s", err)
         except Exception as err:  # pragma: no cover
-            _LOGGER.error("Unexpected Airco Bridge test error: %s", err)
+            _LOGGER.error("Unexpected Powerbaas RGB test error: %s", err)
         return False
 
-    def _airco_id_from_hostname_or_url(self, url: str, hostname: str | None = None) -> str | None:
+    def _rgb_id_from_hostname_or_url(self, url: str, hostname: str | None = None) -> str | None:
         if hostname:
             short = _short_hostname(hostname)
-            if short and any(short.startswith(prefix) for prefix in AIRCO_HOST_PREFIX):
+            if short and any(short.startswith(prefix) for prefix in RGB_HOST_PREFIX):
                 return short
         return _device_id_from_url(url) if url else None
 
-    async def _async_fetch_airco_system_hostname(self, url: str) -> str | None:
+    async def _async_fetch_rgb_system_hostname(self, url: str) -> str | None:
         try:
             session = async_get_clientsession(self.hass)
             async with session.get(
@@ -270,18 +270,18 @@ class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
         if not hostname:
             return None
         short = _short_hostname(str(hostname))
-        if any(short.startswith(prefix) for prefix in AIRCO_HOST_PREFIX):
+        if any(short.startswith(prefix) for prefix in RGB_HOST_PREFIX):
             return short
         return None
 
-    async def _async_airco_device_id_for_url(self, url: str, hostname: str | None = None) -> str | None:
-        if hostname and any(_short_hostname(hostname).startswith(p) for p in AIRCO_HOST_PREFIX):
-            return self._airco_id_from_hostname_or_url(url, hostname)
-        system_hostname = await self._async_fetch_airco_system_hostname(url)
-        return self._airco_id_from_hostname_or_url(url, system_hostname)
+    async def _async_rgb_device_id_for_url(self, url: str, hostname: str | None = None) -> str | None:
+        if hostname and any(_short_hostname(hostname).startswith(p) for p in RGB_HOST_PREFIX):
+            return self._rgb_id_from_hostname_or_url(url, hostname)
+        system_hostname = await self._async_fetch_rgb_system_hostname(url)
+        return self._rgb_id_from_hostname_or_url(url, system_hostname)
 
-    async def async_step_airco_device_config(self, user_input=None):
-        """Ask for/update the Airco Bridge URL."""
+    async def async_step_rgb_device_config(self, user_input=None):
+        """Ask for/update the Powerbaas RGB URL."""
         errors = {}
         default_url = self._normalize_url(self._config_entry.data.get(CONF_DEVICE_URL, ""))
 
@@ -290,10 +290,10 @@ class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
 
             if not device_url.startswith(("http://", "https://")):
                 errors[CONF_DEVICE_URL] = "invalid_url"
-            elif not await self._test_airco_connection(device_url):
-                errors[CONF_DEVICE_URL] = "cannot_connect_airco"
+            elif not await self._test_rgb_connection(device_url):
+                errors[CONF_DEVICE_URL] = "cannot_connect_rgb"
             else:
-                device_id = await self._async_airco_device_id_for_url(
+                device_id = await self._async_rgb_device_id_for_url(
                     device_url, self._config_entry.data.get(CONF_DEVICE_ID)
                 )
                 existing_entry = _find_config_entry_for_device(
@@ -310,7 +310,7 @@ class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
                         self._config_entry,
                         data=new_data,
                         unique_id=(
-                            config_entry_unique_id(DEVICE_TYPE_AIRCO_BRIDGE, device_id)
+                            config_entry_unique_id(DEVICE_TYPE_RGB, device_id)
                             if device_id
                             else self._config_entry.unique_id
                         ),
@@ -322,8 +322,8 @@ class AircoBridgeOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema({vol.Required(CONF_DEVICE_URL, default=default_url): str})
         return self.async_show_form(
-            step_id="airco_device_config",
+            step_id="rgb_device_config",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"example_url": "http://pb-airco-xxxx.local"},
+            description_placeholders={"example_url": "http://pb-rgb-xxxx.local"},
         )

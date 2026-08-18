@@ -6,7 +6,7 @@ testing.
 
 ## Repo layout
 
-- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `button.py`, `climate.py`).
+- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `button.py`, `climate.py`, `light.py`, `switch.py`).
 
 ## Conventions
 
@@ -53,6 +53,10 @@ live per-install value.
 
 Airco Bridge's poll interval is the same kind of fixed default
 (`DEFAULT_POLL_INTERVAL` 10s in `airco_bridge/const.py`) - there is no
+config/options flow field for it.
+
+Powerbaas RGB's poll interval is the same kind of fixed default
+(`DEFAULT_POLL_INTERVAL` 10s in `rgb/const.py`) - there is no
 config/options flow field for it.
 
 This matters for anything that scales behavior off a device's poll/scan

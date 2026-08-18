@@ -8,7 +8,8 @@
         "menu_options": {
           "p1_meter": "P1 Meter",
           "boiler_controller": "Boiler Controller",
-          "airco_bridge": "Airco Bridge"
+          "airco_bridge": "Airco Bridge",
+          "rgb": "Powerbaas RGB"
         }
       },
       "p1_meter": {
@@ -69,6 +70,20 @@
         "data": {
           "device_url": "Device Base URL"
         }
+      },
+      "rgb": {
+        "title": "Setup Powerbaas RGB",
+        "description": "Set up the Powerbaas RGB integration.",
+        "data": {
+          "name": "Integration Name"
+        }
+      },
+      "rgb_device_config": {
+        "title": "Configure Powerbaas RGB",
+        "description": "Enter the URL or IP address of your Powerbaas RGB (e.g. {example_url}). Auto-discovered devices will pre-fill this field.",
+        "data": {
+          "device_url": "Device Base URL"
+        }
       }
     },
     "error": {
@@ -81,6 +96,7 @@
       "sensors_must_differ": "Return and usage sensors must be different entities",
       "cannot_connect_device": "Unable to reach the BC module",
       "cannot_connect_airco": "Unable to reach the Airco Bridge",
+      "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured"
     },
@@ -135,6 +151,13 @@
         "data": {
           "device_url": "Device Base URL"
         }
+      },
+      "rgb_device_config": {
+        "title": "Update Powerbaas RGB Settings",
+        "description": "Adjust the Powerbaas RGB URL. The current URL is shown here.",
+        "data": {
+          "device_url": "Device Base URL"
+        }
       }
     },
     "error": {
@@ -147,6 +170,7 @@
       "sensors_must_differ": "Return and usage sensors must be different entities",
       "cannot_connect_device": "Unable to reach the BC module",
       "cannot_connect_airco": "Unable to reach the Airco Bridge",
+      "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured"
     }
@@ -163,6 +187,10 @@
     "airco_bridge_offline": {
       "title": "Airco Bridge unreachable",
       "description": "The Airco Bridge \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its climate entity and sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
+    },
+    "rgb_offline": {
+      "title": "Powerbaas RGB unreachable",
+      "description": "The Powerbaas RGB \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its light entity and sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
     }
   }
 }

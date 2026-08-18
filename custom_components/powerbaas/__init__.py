@@ -9,8 +9,9 @@ from .const import (
     DEVICE_TYPE_P1_METER,
     DEVICE_TYPE_BOILER_CONTROLLER,
     DEVICE_TYPE_AIRCO_BRIDGE,
+    DEVICE_TYPE_RGB,
 )
-from .devices import p1_meter, boiler_controller, airco_bridge
+from .devices import p1_meter, boiler_controller, airco_bridge, rgb
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,17 +19,20 @@ PLATFORMS_BY_DEVICE_TYPE = {
     DEVICE_TYPE_P1_METER: ["sensor"],
     DEVICE_TYPE_BOILER_CONTROLLER: ["sensor", "select", "number", "button", "switch"],
     DEVICE_TYPE_AIRCO_BRIDGE: ["climate", "sensor", "select"],
+    DEVICE_TYPE_RGB: ["light", "sensor", "select", "switch"],
 }
 
 _SETUP_ENTRY = {
     DEVICE_TYPE_P1_METER: p1_meter.async_setup_entry,
     DEVICE_TYPE_BOILER_CONTROLLER: boiler_controller.async_setup_entry,
     DEVICE_TYPE_AIRCO_BRIDGE: airco_bridge.async_setup_entry,
+    DEVICE_TYPE_RGB: rgb.async_setup_entry,
 }
 _UNLOAD_ENTRY = {
     DEVICE_TYPE_P1_METER: p1_meter.async_unload_entry,
     DEVICE_TYPE_BOILER_CONTROLLER: boiler_controller.async_unload_entry,
     DEVICE_TYPE_AIRCO_BRIDGE: airco_bridge.async_unload_entry,
+    DEVICE_TYPE_RGB: rgb.async_unload_entry,
 }
 
 

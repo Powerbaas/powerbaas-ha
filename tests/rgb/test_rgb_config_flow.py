@@ -1,21 +1,21 @@
-"""Tests for the Airco Bridge config/options flow validation logic."""
+"""Tests for the Powerbaas RGB config/options flow validation logic."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from custom_components.powerbaas.const import CONF_DEVICE_TYPE, DEVICE_TYPE_AIRCO_BRIDGE
-from custom_components.powerbaas.devices.airco_bridge.config_flow import (
-    AircoBridgeFlowMixin,
-    AircoBridgeOptionsFlow,
+from custom_components.powerbaas.const import CONF_DEVICE_TYPE, DEVICE_TYPE_RGB
+from custom_components.powerbaas.devices.rgb.config_flow import (
+    RgbFlowMixin,
+    RgbOptionsFlow,
     _device_id_from_url,
 )
-from custom_components.powerbaas.devices.airco_bridge.const import CONF_DEVICE_URL
+from custom_components.powerbaas.devices.rgb.const import CONF_DEVICE_URL
 
 
-class _FakeFlow(AircoBridgeFlowMixin):
-    """Minimal harness exposing only what the airco config steps touch."""
+class _FakeFlow(RgbFlowMixin):
+    """Minimal harness exposing only what the RGB config steps touch."""
 
     def __init__(self) -> None:
         self.data: dict = {}
@@ -44,59 +44,59 @@ class _FakeFlow(AircoBridgeFlowMixin):
         return None
 
 
-async def test_async_step_airco_bridge_stores_name_and_continues() -> None:
+async def test_async_step_rgb_stores_name_and_continues() -> None:
     flow = _FakeFlow()
-    flow._test_airco_connection = AsyncMock()
+    flow._test_rgb_connection = AsyncMock()
 
-    result = await flow.async_step_airco_bridge({"name": "Woonkamer"})
+    result = await flow.async_step_rgb({"name": "Meterring"})
 
-    assert flow.data[CONF_DEVICE_TYPE] == DEVICE_TYPE_AIRCO_BRIDGE
-    assert flow.data["name"] == "Woonkamer"
+    assert flow.data[CONF_DEVICE_TYPE] == DEVICE_TYPE_RGB
+    assert flow.data["name"] == "Meterring"
     assert result is flow.shown
-    assert flow.shown["step_id"] == "airco_device_config"
+    assert flow.shown["step_id"] == "rgb_device_config"
 
 
-async def test_async_step_airco_device_config_invalid_url_shows_error() -> None:
+async def test_async_step_rgb_device_config_invalid_url_shows_error() -> None:
     flow = _FakeFlow()
-    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_AIRCO_BRIDGE, "name": "Airco"}
+    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_RGB, "name": "RGB"}
 
-    await flow.async_step_airco_device_config({CONF_DEVICE_URL: "not-a-url"})
+    await flow.async_step_rgb_device_config({CONF_DEVICE_URL: "not-a-url"})
 
     assert flow.shown["errors"] == {CONF_DEVICE_URL: "invalid_url"}
     assert flow.created is None
 
 
-async def test_async_step_airco_device_config_cannot_connect_shows_error() -> None:
+async def test_async_step_rgb_device_config_cannot_connect_shows_error() -> None:
     flow = _FakeFlow()
-    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_AIRCO_BRIDGE, "name": "Airco"}
-    flow._test_airco_connection = AsyncMock(return_value=False)
+    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_RGB, "name": "RGB"}
+    flow._test_rgb_connection = AsyncMock(return_value=False)
 
-    await flow.async_step_airco_device_config({CONF_DEVICE_URL: "http://airco.local"})
+    await flow.async_step_rgb_device_config({CONF_DEVICE_URL: "http://rgb.local"})
 
-    assert flow.shown["errors"] == {CONF_DEVICE_URL: "cannot_connect_airco"}
+    assert flow.shown["errors"] == {CONF_DEVICE_URL: "cannot_connect_rgb"}
 
 
-async def test_async_step_airco_device_config_success_creates_entry() -> None:
+async def test_async_step_rgb_device_config_success_creates_entry() -> None:
     flow = _FakeFlow()
-    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_AIRCO_BRIDGE, "name": "Woonkamer"}
-    flow._test_airco_connection = AsyncMock(return_value=True)
+    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_RGB, "name": "Meterring"}
+    flow._test_rgb_connection = AsyncMock(return_value=True)
 
-    await flow.async_step_airco_device_config({CONF_DEVICE_URL: "http://airco.local/"})
+    await flow.async_step_rgb_device_config({CONF_DEVICE_URL: "http://rgb.local/"})
 
-    assert flow.created["title"] == "Woonkamer"
-    assert flow.created["data"][CONF_DEVICE_URL] == "http://airco.local"
-    assert flow.created["data"]["device_id"] == "airco.local"
-    assert flow.unique_id == "airco_bridge:airco.local"
+    assert flow.created["title"] == "Meterring"
+    assert flow.created["data"][CONF_DEVICE_URL] == "http://rgb.local"
+    assert flow.created["data"]["device_id"] == "rgb.local"
+    assert flow.unique_id == "rgb:rgb.local"
 
 
 def test_device_id_from_url_includes_non_default_port() -> None:
-    assert _device_id_from_url("http://airco.local/") == "airco.local"
+    assert _device_id_from_url("http://rgb.local/") == "rgb.local"
     assert _device_id_from_url("http://host.docker.internal:18080") == "host.docker.internal:18080"
     assert _device_id_from_url("http://host.docker.internal:18081") == "host.docker.internal:18081"
     assert _device_id_from_url("http://192.168.2.3") == "192.168.2.3"
 
 
-class _FakeOptionsFlow(AircoBridgeOptionsFlow):
+class _FakeOptionsFlow(RgbOptionsFlow):
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
         self.hass = SimpleNamespace(
@@ -121,12 +121,12 @@ class _FakeOptionsFlow(AircoBridgeOptionsFlow):
 async def test_options_flow_invalid_url_shows_error() -> None:
     entry = SimpleNamespace(
         data={CONF_DEVICE_URL: "http://old.local", "device_id": "old.local"},
-        entry_id="airco_entry",
+        entry_id="rgb_entry",
         unique_id="old.local",
     )
     flow = _FakeOptionsFlow(entry)
 
-    await flow.async_step_airco_device_config({CONF_DEVICE_URL: "nope"})
+    await flow.async_step_rgb_device_config({CONF_DEVICE_URL: "nope"})
 
     assert flow.shown["errors"] == {CONF_DEVICE_URL: "invalid_url"}
 
@@ -134,13 +134,13 @@ async def test_options_flow_invalid_url_shows_error() -> None:
 async def test_options_flow_success_updates_entry_and_reloads() -> None:
     entry = SimpleNamespace(
         data={CONF_DEVICE_URL: "http://old.local", "device_id": "old.local"},
-        entry_id="airco_entry",
+        entry_id="rgb_entry",
         unique_id="old.local",
     )
     flow = _FakeOptionsFlow(entry)
-    flow._test_airco_connection = AsyncMock(return_value=True)
+    flow._test_rgb_connection = AsyncMock(return_value=True)
 
-    await flow.async_step_airco_device_config({CONF_DEVICE_URL: "http://new.local"})
+    await flow.async_step_rgb_device_config({CONF_DEVICE_URL: "http://new.local"})
 
     assert flow.created == {"title": "", "data": {}}
     flow.hass.config_entries.async_reload.assert_awaited_once()
