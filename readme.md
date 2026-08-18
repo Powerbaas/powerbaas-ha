@@ -1,9 +1,10 @@
 # Powerbaas Home Assistant Integration
 
-This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports two device types, added side by side through the same integration:
+This Home Assistant integration connects your Powerbaas devices to Home Assistant. It currently supports three device types, added side by side through the same integration:
 
 - **P1 Meter** - monitor your energy meter, solar and dynamic tariff data
 - **Boiler Controller** - use your extra solar power to heat your boiler instead of sending it back to the grid
+- **Airco Bridge** - control an air conditioner over IR, with optional room-temperature sensing
 
 ## Installation
 
@@ -40,6 +41,7 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 
 - **[P1 Meter](docs/p1-meter.md)** - reads your smart meter (P1 port) and exposes power, energy and dynamic tariff sensors in Home Assistant
 - **[Boiler Controller](docs/boiler-controller.md)** - controls a Powerbaas Boiler Controller module, using your extra solar power to heat your boiler instead of sending it back to the grid
+- **[Airco Bridge](docs/airco-bridge.md)** - controls a Powerbaas Airco Bridge, sending IR commands to an air conditioner and optionally reading room temperature
 
 ## Development & Testing
 

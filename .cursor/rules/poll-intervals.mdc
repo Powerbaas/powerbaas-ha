@@ -1,0 +1,15 @@
+---
+description: P1 scan_interval is user-configurable; Boiler Controller poll_interval is not
+globs: custom_components/powerbaas/devices/**/*.py
+alwaysApply: false
+---
+
+# Poll/scan interval configurability
+
+P1 meter's `scan_interval` is a real, user-configurable setting (5–60s, `SCAN_INTERVAL_SCHEMA` in `p1_meter/config_flow.py`) in both the initial config flow and the options flow.
+
+Boiler Controller's `poll_interval` is read from config entry data (`CONF_POLL_INTERVAL` / `DEFAULT_POLL_INTERVAL` in `boiler_controller/const.py`, `controller.py`) but no config_flow/options_flow step ever sets it. It is effectively fixed at `DEFAULT_POLL_INTERVAL` (10s) for every install. Do not treat it as a live per-install value.
+
+Airco Bridge's poll interval is the same kind of fixed default (`DEFAULT_POLL_INTERVAL` 10s in `airco_bridge/const.py`) — there is no config/options flow field for it.
+
+Anything that scales off a device's poll/scan interval (e.g. request timeouts) can only use a real setting on the P1 meter.

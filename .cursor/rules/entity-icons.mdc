@@ -1,0 +1,14 @@
+---
+description: mdi icons must match physical quantity (W vs kWh)
+globs: custom_components/powerbaas/**/{sensor,number,select,button,binary_sensor,switch}.py
+alwaysApply: false
+---
+
+# Entity icons (mdi)
+
+Pick icons by the physical quantity an entity represents, not just "electricity-ish":
+
+- `mdi:flash` — instantaneous power entities, unit **W** (e.g. a power sensor, a target-watts number).
+- `mdi:lightning-bolt` — cumulative energy entities, unit **kWh** (e.g. a total-energy sensor).
+
+A Watts-unit entity must never get `mdi:lightning-bolt`, and vice versa. Applies to all device types in `custom_components/powerbaas`, not just Boiler Controller.

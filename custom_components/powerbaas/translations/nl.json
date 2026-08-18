@@ -7,7 +7,8 @@
         "description": "Kies welk type apparaat je wilt toevoegen.",
         "menu_options": {
           "p1_meter": "P1 Meter",
-          "boiler_controller": "Boiler Controller"
+          "boiler_controller": "Boiler Controller",
+          "airco_bridge": "Airco Bridge"
         }
       },
       "p1_meter": {
@@ -54,6 +55,20 @@
         "data": {
           "device_url": "Module Basis URL"
         }
+      },
+      "airco_bridge": {
+        "title": "Airco Bridge Instellen",
+        "description": "Stel de Airco Bridge integratie in.",
+        "data": {
+          "name": "Integratie Naam"
+        }
+      },
+      "airco_device_config": {
+        "title": "Airco Bridge Configureren",
+        "description": "Vul de URL of het IP-adres van je Airco Bridge in (bijv. {example_url}). Bij automatisch gevonden apparaten wordt dit veld vooringevuld.",
+        "data": {
+          "device_url": "Apparaat Basis URL"
+        }
       }
     },
     "error": {
@@ -65,11 +80,12 @@
       "invalid_sensor_type": "Kies netto of gesplitst",
       "sensors_must_differ": "Teruglever- en afname-sensor moeten verschillende entiteiten zijn",
       "cannot_connect_device": "Kan geen verbinding maken met de BC module",
+      "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_identify": "Kan het module ID niet bepalen",
       "device_in_use": "Deze module is al geconfigureerd"
     },
     "abort": {
-      "already_configured": "Boiler Controller is al geconfigureerd",
+      "already_configured": "Dit Powerbaas-apparaat is al geconfigureerd",
       "unsupported_device": "Het gevonden apparaat wordt niet ondersteund door Powerbaas",
       "p1_already_configured": "Er is al een P1 meter geconfigureerd voor deze Powerbaas-integratie"
     }
@@ -112,6 +128,13 @@
           "return_sensor": "Teruglever-sensor (export)",
           "usage_sensor": "Afname-sensor (import)"
         }
+      },
+      "airco_device_config": {
+        "title": "Airco Bridge Instellingen Bijwerken",
+        "description": "Pas de Airco Bridge URL aan. De huidige URL wordt hier getoond.",
+        "data": {
+          "device_url": "Apparaat Basis URL"
+        }
       }
     },
     "error": {
@@ -123,6 +146,7 @@
       "invalid_sensor_type": "Kies netto of gesplitst",
       "sensors_must_differ": "Teruglever- en afname-sensor moeten verschillende entiteiten zijn",
       "cannot_connect_device": "Kan geen verbinding maken met de BC module",
+      "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_identify": "Kan het module ID niet bepalen",
       "device_in_use": "Deze module is al geconfigureerd"
     }
@@ -135,6 +159,10 @@
     "p1_meter_offline": {
       "title": "P1 Meter onbereikbaar",
       "description": "De Powerbaas P1 meter \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een data-aanvraag en wordt als offline beschouwd. Sensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en netwerkverbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    },
+    "airco_bridge_offline": {
+      "title": "Airco Bridge onbereikbaar",
+      "description": "De Airco Bridge \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. De climate-entiteit en sensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
     }
   }
 }

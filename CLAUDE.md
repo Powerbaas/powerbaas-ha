@@ -6,7 +6,7 @@ testing.
 
 ## Repo layout
 
-- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `button.py`).
+- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `button.py`, `climate.py`).
 
 ## Conventions
 
@@ -50,6 +50,10 @@ Boiler Controller's `poll_interval` is read from config entry data
 despite the code path existing, it's effectively fixed at
 `DEFAULT_POLL_INTERVAL` (10s) for every install today. Don't assume it's a
 live per-install value.
+
+Airco Bridge's poll interval is the same kind of fixed default
+(`DEFAULT_POLL_INTERVAL` 10s in `airco_bridge/const.py`) - there is no
+config/options flow field for it.
 
 This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real

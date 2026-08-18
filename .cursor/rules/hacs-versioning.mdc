@@ -1,0 +1,17 @@
+---
+description: Keep manifest.json version in sync with HACS git tags and schema changes
+globs: custom_components/powerbaas/{manifest.json,__init__.py,**/config_flow.py}
+alwaysApply: false
+---
+
+# Versioning (HACS release)
+
+HACS resolves releases from git tags, not from any file — but `custom_components/powerbaas/manifest.json`'s `"version"` must match the tag (e.g. tag `2.1.0` <-> `"version": "2.1.0"`). Bump `manifest.json` in the same change/PR that will be tagged.
+
+Bump the version (at least a minor bump) whenever the entity/`unique_id`/config entry schema changes, for example:
+
+- a new `unique_id` format
+- a config entry `VERSION` bump in `config_flow.py` plus matching `async_migrate_entry` in `__init__.py`
+- anything else that needs a migration path for existing installs
+
+Users diagnose issues by integration version, so schema changes must show up in the version number even without a user-facing feature.

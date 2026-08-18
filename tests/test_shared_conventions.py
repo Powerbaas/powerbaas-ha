@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from custom_components.powerbaas.devices.boiler_controller import const as bc_const
 from custom_components.powerbaas.devices.p1_meter import const as p1_const
+from custom_components.powerbaas.devices.airco_bridge import const as airco_const
 
 # Each entry: (label, table, unit_index, icon_index)
 _SENSOR_TABLES = [
@@ -18,6 +19,8 @@ _SENSOR_TABLES = [
     ("p1_meter.MAIN_SENSORS", p1_const.MAIN_SENSORS, 2, 7),
     ("p1_meter.DIAGNOSTIC_SENSORS", p1_const.DIAGNOSTIC_SENSORS, 2, 7),
     ("p1_meter.COMBINED_SENSORS", p1_const.COMBINED_SENSORS, 3, 8),
+    ("airco_bridge.MAIN_SENSORS", airco_const.MAIN_SENSORS, 2, 7),
+    ("airco_bridge.DIAGNOSTIC_SENSORS", airco_const.DIAGNOSTIC_SENSORS, 2, 7),
 ]
 
 

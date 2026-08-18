@@ -54,6 +54,7 @@ body:
       options:
         - P1 Meter
         - Boiler Controller
+        - Airco Bridge
     validations:
       required: true
   - type: textarea
