@@ -9,9 +9,11 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Powerbaas/powerbaas-ha/issues",
   "requirements": [],
-  "version": "2.2.0",
+  "version": "2.3.0",
   "zeroconf": [
     { "type": "_http._tcp.local.", "name": "pb-bc-*" },
+    { "type": "_http._tcp.local.", "name": "pb-airco-*" },
+    { "type": "_http._tcp.local.", "name": "pb-rgb-*" },
     { "type": "_http._tcp.local.", "name": "powerbaas*" }
   ]
 }

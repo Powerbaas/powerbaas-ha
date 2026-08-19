@@ -1,0 +1,14 @@
+---
+description: Test layout, pytest commands, and reproduce-first bugfix workflow
+globs: tests/**/*.py, docs/testing.md
+alwaysApply: false
+---
+
+# Testing
+
+See `docs/testing.md` for how to run tests, test layout, and the reproduce-first bugfix workflow.
+
+- Tests live under `tests/<device_type>/`, mirroring `custom_components/powerbaas/devices/<device_type>/`.
+- Cross-device convention checks go in `tests/test_shared_conventions.py`.
+- Prefer constructing the class under test with `object.__new__(...)` and only the attributes the method reads — see `tests/boiler_controller/test_controller.py`.
+- Bugfixes: write a failing reproduction test first, then the fix. Name it `tests/<device_type>/test_issue_<github-number>_<short-slug>.py` when there is a GitHub issue.

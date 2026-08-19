@@ -54,6 +54,8 @@ body:
       options:
         - P1 Meter
         - Boiler Controller
+        - Airco Bridge
+        - Powerbaas RGB
     validations:
       required: true
   - type: textarea

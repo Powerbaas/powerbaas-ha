@@ -1,0 +1,8 @@
+---
+description: Do not add AI Co-Authored-By trailers to commits or PRs
+alwaysApply: true
+---
+
+# Commits and PRs
+
+Never add a `Co-Authored-By: Claude …` (or any other AI co-author) trailer to commit messages. Commits authored by the user should not attribute an AI assistant as co-author, even when one assisted. Applies to all commits in this repo and all PRs opened from it.

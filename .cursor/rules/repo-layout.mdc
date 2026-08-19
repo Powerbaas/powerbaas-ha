@@ -1,0 +1,11 @@
+---
+description: Repo layout of the Powerbaas Home Assistant integration
+alwaysApply: true
+---
+
+# Repo layout
+
+See `readme.md` for what the integration does, and `docs/*.md` for per-device-type behavior and testing.
+
+- `custom_components/powerbaas/` — the Home Assistant integration (HACS package).
+- Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `button.py`, `climate.py`, `light.py`).
