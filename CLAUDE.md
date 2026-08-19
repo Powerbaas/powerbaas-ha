@@ -24,11 +24,14 @@ and vice versa. This applies across all device types in
 
 ### Versioning (HACS release)
 
-HACS resolves releases from git tags on this repo, not from any file - but
-`custom_components/powerbaas/manifest.json`'s `"version"` field must be kept
-in sync with the tag being released (e.g. tag `2.1.0` <-> `"version": "2.1.0"`).
-Bump the `manifest.json` version as part of the same change/PR that will be
-tagged, don't leave it for release time.
+HACS resolves releases from git tags on this repo, not from any file -
+`custom_components/powerbaas/manifest.json`'s `"version"` field is the
+source of truth for the tag though. `.github/workflows/release.yml` tags
+every push to `main` as `v<manifest version>` automatically (skipped if that
+tag already exists), so releases only ever get tagged from `main` - never
+tag manually. Bump the `manifest.json` version as part of the same PR that
+should trigger the release; merging without a version bump merges the code
+without cutting a new release.
 
 Bump the version (at least a minor bump) whenever the entity/unique_id/config
 entry schema changes - e.g. a new `unique_id` format, a config entry
