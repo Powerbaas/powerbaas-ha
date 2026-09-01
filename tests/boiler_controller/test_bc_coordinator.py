@@ -65,6 +65,8 @@ class _FakeBCClient:
         self.status: dict | None = {}
         self.calibration_states: list[str] = []
         self.calibration_run_result = True
+        self.ssr_calls: list[bool] = []
+        self.ssr_result: bool | None = True
 
     async def async_set_target_watts(self, watts: int) -> bool:
         self.target_watts_calls.append(watts)
@@ -76,6 +78,10 @@ class _FakeBCClient:
 
     async def async_get_status(self) -> dict | None:
         return self.status
+
+    async def async_set_ssr(self, on: bool) -> bool | None:
+        self.ssr_calls.append(on)
+        return self.ssr_result
 
     async def async_get_system(self) -> dict | None:
         return None
@@ -374,6 +380,38 @@ async def test_async_set_min_heating_watts_clamps_to_max() -> None:
     await coordinator.async_set_min_heating_watts(5000)
 
     assert coordinator.data["min_heating_watts"] == 1000
+
+
+async def test_async_set_ssr_applies_device_confirmed_state_without_refresh() -> None:
+    """async_set_ssr must not depend on async_request_refresh() to reflect the
+    new state: that goes through DataUpdateCoordinator's debounced refresh,
+    which can be deferred behind an in-flight periodic poll and cause the
+    switch to revert to its old state before flipping again once the
+    deferred refresh finally runs. Applying the device's confirmed response
+    directly via async_set_updated_data() avoids that race.
+    """
+    device_client = _FakeBCClient()
+    device_client.status = {"ssr": {"on": False}}
+    device_client.ssr_result = True
+    coordinator = _make_coordinator(device_client=device_client)
+    coordinator.data = {**coordinator.data, "status": {"ssr": {"on": False}}}
+
+    await coordinator.async_set_ssr(True)
+
+    assert device_client.ssr_calls == [True]
+    assert coordinator.data["status"]["ssr"]["on"] is True
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+async def test_async_set_ssr_noop_when_device_confirmation_fails() -> None:
+    device_client = _FakeBCClient()
+    device_client.ssr_result = None
+    coordinator = _make_coordinator(device_client=device_client)
+    coordinator.data = {**coordinator.data, "status": {"ssr": {"on": False}}}
+
+    await coordinator.async_set_ssr(True)
+
+    assert coordinator.data["status"]["ssr"]["on"] is False
 
 
 # ---------------------------------------------------------------------------

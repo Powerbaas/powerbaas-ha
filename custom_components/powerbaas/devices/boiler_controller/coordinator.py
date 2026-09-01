@@ -594,9 +594,24 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({**self.data, "min_heating_watts": watts})
 
     async def async_set_ssr(self, on: bool) -> None:
-        """Turn the SSR relay on/off and refresh device status."""
-        await self.device_client.async_set_ssr(on)
-        await self.async_request_refresh()
+        """Turn the SSR relay on/off, applying the device's confirmed response.
+
+        Applies the reported state via async_set_updated_data() rather than
+        async_request_refresh(): the latter goes through
+        DataUpdateCoordinator's debounced-refresh cooldown (10s by default -
+        the same as this coordinator's poll_interval), so a toggle landing
+        while a periodic poll is already in flight gets deferred a full
+        cooldown, while that in-flight poll (which read the device before
+        the command took effect) lands afterwards and overwrites the switch
+        back to its old state - the switch flips to the new state, reverts,
+        then flips again once the deferred refresh finally runs.
+        """
+        reported = await self.device_client.async_set_ssr(on)
+        if reported is None:
+            return
+        status = dict((self.data or {}).get("status") or {})
+        status["ssr"] = {**(status.get("ssr") or {}), "on": reported}
+        self.async_set_updated_data({**self.data, "status": status})
 
     # ------------------------------------------------------------------
     # Calibration
