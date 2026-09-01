@@ -1,0 +1,21 @@
+{
+  "entity": {
+    "climate": {
+      "airco_bridge": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "auto": "mdi:fan-auto",
+              "min": "mdi:numeric-1-circle-outline",
+              "low": "mdi:numeric-2-circle-outline",
+              "medium": "mdi:numeric-3-circle-outline",
+              "medium_high": "mdi:numeric-4-circle-outline",
+              "high": "mdi:numeric-5-circle-outline",
+              "max": "mdi:numeric-6-circle-outline"
+            }
+          }
+        }
+      }
+    }
+  }
+}
