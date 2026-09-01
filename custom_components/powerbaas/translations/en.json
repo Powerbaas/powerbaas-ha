@@ -175,6 +175,25 @@
       "device_in_use": "This module is already configured"
     }
   },
+  "entity": {
+    "climate": {
+      "airco_bridge": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "min": "Min",
+              "low": "Low",
+              "medium": "Medium",
+              "medium_high": "Medium high",
+              "high": "High",
+              "max": "Max"
+            }
+          }
+        }
+      }
+    }
+  },
   "issues": {
     "boiler_controller_offline": {
       "title": "Boiler Controller unreachable",

@@ -175,6 +175,25 @@
       "device_in_use": "Deze module is al geconfigureerd"
     }
   },
+  "entity": {
+    "climate": {
+      "airco_bridge": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "min": "Min",
+              "low": "Laag",
+              "medium": "Gemiddeld",
+              "medium_high": "Gemiddeld hoog",
+              "high": "Hoog",
+              "max": "Max"
+            }
+          }
+        }
+      }
+    }
+  },
   "issues": {
     "boiler_controller_offline": {
       "title": "Boiler Controller onbereikbaar",

@@ -40,9 +40,9 @@ FAN_MODE_TO_FIRMWARE = {
     "min": 1,
     "low": 2,
     "medium": 3,
+    "medium_high": 6,
     "high": 4,
     "max": 5,
-    "medium_high": 6,
 }
 FIRMWARE_TO_FAN_MODE = {value: key for key, value in FAN_MODE_TO_FIRMWARE.items()}
 
