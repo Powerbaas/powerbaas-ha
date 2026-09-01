@@ -17,7 +17,7 @@ enforce a convention documented above (e.g. the icon rule) go in
 Most tests build the class under test directly via `object.__new__(...)`
 and set only the attributes the method under test reads, rather than
 constructing it through a full config entry - see `tests/boiler_controller/
-test_controller.py` for the pattern.
+test_bc_coordinator.py` for the pattern.
 
 ## Reproduce-first bugfix workflow
 

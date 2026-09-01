@@ -93,12 +93,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
                 translation_key="p1_meter_offline",
                 translation_placeholders={"name": device_name},
             )
+            # DataUpdateCoordinator only calls async_update_listeners() for
+            # the *first* failed refresh after a success (see its
+            # last_update_success/previous_update_success check) - every
+            # failure after that is silently skipped. Without this, entities
+            # never learn device_online flipped to False and stay "available".
+            coordinator.async_update_listeners()
 
     def _register_fetch_success() -> None:
         nonlocal consecutive_failures
         if consecutive_failures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES:
             coordinator.device_online = True
             issue_registry.async_delete_issue(hass, DOMAIN, offline_issue_id)
+            coordinator.async_update_listeners()
         consecutive_failures = 0
 
     async def async_update_data():

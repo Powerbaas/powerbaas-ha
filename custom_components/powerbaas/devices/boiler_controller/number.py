@@ -1,17 +1,29 @@
 """Number entities for controlling manual brightness."""
 from __future__ import annotations
 
-from typing import Callable, List
+from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ...const import DOMAIN
 from .const import BOILER_MODE_MANUAL, BOILER_MODE_AUTO
+
+
+def _device_info(coordinator, config_entry: ConfigEntry) -> dict[str, Any]:
+    system = (coordinator.data or {}).get("system") or {}
+    return {
+        "identifiers": {(DOMAIN, config_entry.entry_id)},
+        "name": config_entry.title,
+        "manufacturer": "Powerbaas",
+        "model": "Boiler Controller",
+        "sw_version": str(system.get("firmwareVersion", "Unknown")),
+        "configuration_url": coordinator.device_url,
+    }
 
 
 async def async_setup_entry(
@@ -20,14 +32,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up number entities for this config entry."""
-    controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     async_add_entities([
-        BoilerControllerManualBrightnessNumber(hass, config_entry, controller),
-        BoilerControllerMinHeatingWattsNumber(hass, config_entry, controller),
+        BoilerControllerManualBrightnessNumber(coordinator, config_entry),
+        BoilerControllerMinHeatingWattsNumber(coordinator, config_entry),
     ])
 
 
-class BoilerControllerManualBrightnessNumber(NumberEntity):
+class BoilerControllerManualBrightnessNumber(CoordinatorEntity, NumberEntity):
     """Number entity exposing manual brightness override."""
 
     _attr_should_poll = False
@@ -37,98 +49,40 @@ class BoilerControllerManualBrightnessNumber(NumberEntity):
     _attr_mode = NumberMode.BOX
     _attr_icon = "mdi:flash"
 
-    @property
-    def native_max_value(self) -> float:
-        return self.controller.max_heating_watts
-
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
-        self.hass = hass
+    def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
         self.config_entry = config_entry
-        self.controller = controller
         self._attr_name = f"{config_entry.title} Manual Power"
         self._attr_unique_id = f"{config_entry.entry_id}_manual_watts"
-        self._attr_native_value = controller.manual_watts
-        self._remove_callbacks: List[Callable[[], None]] = []
 
-    async def async_added_to_hass(self) -> None:
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_manual_watts_signal(),
-                self._handle_manual_watts_update,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_control_mode_signal(),
-                self._handle_mode_update,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_calibration_state_signal(),
-                self._handle_calibration_state,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_max_heating_watts_signal(),
-                self._handle_max_watts_update,
-            )
-        )
-        self.async_write_ha_state()
+    @property
+    def native_max_value(self) -> float:
+        return (self.coordinator.data or {}).get("max_heating_watts", 0)
 
-    async def async_will_remove_from_hass(self) -> None:
-        for remove in self._remove_callbacks:
-            remove()
-        self._remove_callbacks.clear()
-
-    @callback
-    def _handle_mode_update(self, mode: str) -> None:
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_manual_watts_update(self, value: int) -> None:
-        self._attr_native_value = value
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_max_watts_update(self, watts: int) -> None:
-        self.async_write_ha_state()
+    @property
+    def native_value(self) -> float:
+        return (self.coordinator.data or {}).get("manual_watts", 0)
 
     async def async_set_native_value(self, value: float) -> None:
-        if self.controller.is_calibration_active:
+        if (self.coordinator.data or {}).get("calibration_active"):
             raise HomeAssistantError("Cannot change manual power during calibration")
-        await self.controller.async_set_manual_watts(int(value))
-
-    @callback
-    def _handle_calibration_state(self, *_: object) -> None:
-        self.async_write_ha_state()
+        await self.coordinator.async_set_manual_watts(int(value))
 
     @property
     def available(self) -> bool:
+        data = self.coordinator.data or {}
         return (
-            super().available
-            and not self.controller.is_calibration_active
-            and self.controller.control_mode == BOILER_MODE_MANUAL
+            self.coordinator.device_online
+            and not data.get("calibration_active")
+            and data.get("control_mode") == BOILER_MODE_MANUAL
         )
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.config_entry.entry_id)},
-            "name": self.config_entry.title,
-            "manufacturer": "Powerbaas",
-            "model": "Boiler Controller",
-            "sw_version": self.controller.device_firmware_version,
-            "configuration_url": self.controller.device_url,
-        }
+    def device_info(self) -> dict[str, Any]:
+        return _device_info(self.coordinator, self.config_entry)
 
 
-class BoilerControllerMinHeatingWattsNumber(NumberEntity):
+class BoilerControllerMinHeatingWattsNumber(CoordinatorEntity, NumberEntity):
     """Number entity exposing the min heating watts floor (Auto mode only)."""
 
     _attr_should_poll = False
@@ -138,90 +92,32 @@ class BoilerControllerMinHeatingWattsNumber(NumberEntity):
     _attr_mode = NumberMode.BOX
     _attr_icon = "mdi:flash"
 
-    @property
-    def native_max_value(self) -> float:
-        return self.controller.max_heating_watts
-
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller) -> None:
-        self.hass = hass
+    def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
         self.config_entry = config_entry
-        self.controller = controller
         self._attr_name = f"{config_entry.title} Minimum Heating Power"
         self._attr_unique_id = f"{config_entry.entry_id}_min_heating_watts"
-        self._attr_native_value = controller.min_heating_watts
-        self._remove_callbacks: List[Callable[[], None]] = []
 
-    async def async_added_to_hass(self) -> None:
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_min_heating_watts_signal(),
-                self._handle_min_watts_update,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_max_heating_watts_signal(),
-                self._handle_max_watts_update,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_control_mode_signal(),
-                self._handle_mode_update,
-            )
-        )
-        self._remove_callbacks.append(
-            async_dispatcher_connect(
-                self.hass,
-                self.controller.get_calibration_state_signal(),
-                self._handle_calibration_state,
-            )
-        )
-        self.async_write_ha_state()
+    @property
+    def native_max_value(self) -> float:
+        return (self.coordinator.data or {}).get("max_heating_watts", 0)
 
-    async def async_will_remove_from_hass(self) -> None:
-        for remove in self._remove_callbacks:
-            remove()
-        self._remove_callbacks.clear()
-
-    @callback
-    def _handle_min_watts_update(self, value: int) -> None:
-        self._attr_native_value = value
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_max_watts_update(self, watts: int) -> None:
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_mode_update(self, mode: str) -> None:
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_calibration_state(self, *_: object) -> None:
-        self.async_write_ha_state()
+    @property
+    def native_value(self) -> float:
+        return (self.coordinator.data or {}).get("min_heating_watts", 0)
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.controller.async_set_min_heating_watts(int(value))
+        await self.coordinator.async_set_min_heating_watts(int(value))
 
     @property
     def available(self) -> bool:
+        data = self.coordinator.data or {}
         return (
-            super().available
-            and not self.controller.is_calibration_active
-            and self.controller.control_mode == BOILER_MODE_AUTO
+            self.coordinator.device_online
+            and not data.get("calibration_active")
+            and data.get("control_mode") == BOILER_MODE_AUTO
         )
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.config_entry.entry_id)},
-            "name": self.config_entry.title,
-            "manufacturer": "Powerbaas",
-            "model": "Boiler Controller",
-            "sw_version": self.controller.device_firmware_version,
-            "configuration_url": self.controller.device_url,
-        }
+    def device_info(self) -> dict[str, Any]:
+        return _device_info(self.coordinator, self.config_entry)
