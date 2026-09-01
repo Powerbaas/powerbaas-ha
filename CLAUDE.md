@@ -47,7 +47,7 @@ initial config flow and the options flow.
 
 Boiler Controller's `poll_interval` is read from config entry data
 (`CONF_POLL_INTERVAL` / `DEFAULT_POLL_INTERVAL` in `boiler_controller/const.py`,
-`controller.py`) but no config_flow/options_flow step ever sets it - so
+`coordinator.py`) but no config_flow/options_flow step ever sets it - so
 despite the code path existing, it's effectively fixed at
 `DEFAULT_POLL_INTERVAL` (10s) for every install today. Don't assume it's a
 live per-install value.
@@ -91,10 +91,11 @@ Boiler Controller, Airco Bridge, and RGB all follow the same pattern:
   reports "Online"/"Offline" as its state, so the device's connectivity is
   visible even while every other entity is unavailable.
 
-If the device type is built on Home Assistant's `DataUpdateCoordinator`
-(P1 meter, RGB, Airco Bridge - Boiler Controller isn't, it drives entities
-via `async_dispatcher_send` on every poll instead), be aware that
-`DataUpdateCoordinator._async_refresh()` only calls
+All four device types are now built on Home Assistant's
+`DataUpdateCoordinator` (P1 meter, RGB, Airco Bridge, and Boiler Controller -
+the latter migrated from a hand-rolled `asyncio` poll loop plus
+`async_dispatcher_send` signals; see `boiler_controller/coordinator.py`).
+Be aware that `DataUpdateCoordinator._async_refresh()` only calls
 `async_update_listeners()` for the *first* failed refresh after a success -
 every consecutive failure after that is silently skipped (see
 `homeassistant/helpers/update_coordinator.py`, the
@@ -104,10 +105,22 @@ every consecutive failure after that is silently skipped (see
 notification already happened, entities never learn about it and stay
 stuck showing "available" unless the code where `device_online` flips
 explicitly calls `self.async_update_listeners()` (and again on recovery).
-This bit RGB and Airco Bridge in practice - see the fix in
-`devices/airco_bridge/__init__.py`'s and `devices/rgb/__init__.py`'s
-`_register_failure`/`_register_success`, and the regression test in
+This bit RGB and Airco Bridge in practice, and Boiler Controller's migration
+carried the same fix forward - see `_register_failure`/`_register_success`
+in `devices/{airco_bridge,rgb,boiler_controller}/{__init__,coordinator}.py`,
+and the regression test in
 `tests/airco_bridge/test_airco_setup.py::test_listeners_notified_when_device_goes_offline`.
+
+Boiler Controller's coordinator also owns command methods (mode/watts/SSR/
+calibration setters) beyond just polling - unlike RGB/Airco's thin
+coordinators, this is deliberate: that logic is genuinely device-specific
+business logic, not boilerplate, so it doesn't belong split onto entities.
+Command-driven fields (`control_mode`, `manual_watts`, `max_heating_watts`,
+`min_heating_watts`, `calibration_active`) live in `coordinator.data`
+alongside the polled `status`/`system` fields, pushed via
+`async_set_updated_data()`; `_async_update_data()` carries those
+command-driven keys forward from the previous cycle on every poll, since
+they aren't re-fetched from the device.
 
 None of the existing device types special-case a specific "not found"
 signal (e.g. HTTP 404) differently from other failures (timeout, connection
