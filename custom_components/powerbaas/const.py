@@ -1,5 +1,10 @@
 DOMAIN = "powerbaas"
 
+# Config entry data schema version. Bump this and add a matching branch to
+# async_migrate_entry() in __init__.py whenever the shape of config entry
+# data changes for any device type - see CLAUDE.md's Versioning section.
+CONFIG_ENTRY_VERSION = 2
+
 CONF_DEVICE_TYPE = "device_type"
 
 DEVICE_TYPE_P1_METER = "p1_meter"

@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from .const import (
     DOMAIN,
     CONF_DEVICE_TYPE,
+    CONFIG_ENTRY_VERSION,
     DEVICE_TYPE_P1_METER,
     DEVICE_TYPE_BOILER_CONTROLLER,
     DEVICE_TYPE_AIRCO_BRIDGE,
@@ -46,8 +47,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate an old config entry to the current version."""
     if _device_type(entry) == DEVICE_TYPE_P1_METER and entry.version == 1:
         p1_meter.migrate_legacy_entities(hass, entry)
-        hass.config_entries.async_update_entry(entry, version=2)
-        _LOGGER.info("Powerbaas entry %s migrated to version 2", entry.entry_id)
+        hass.config_entries.async_update_entry(entry, version=CONFIG_ENTRY_VERSION)
+        _LOGGER.info(
+            "Powerbaas entry %s migrated to version %s",
+            entry.entry_id,
+            CONFIG_ENTRY_VERSION,
+        )
 
     return True
 

@@ -31,12 +31,13 @@ Bump the `manifest.json` version as part of the same change/PR that will be
 tagged, don't leave it for release time.
 
 Bump the version (at least a minor bump) whenever the entity/unique_id/config
-entry schema changes - e.g. a new `unique_id` format, a config entry
-`VERSION` bump in `config_flow.py` plus its matching `async_migrate_entry`
-step in `__init__.py`, or anything else that needs a migration path for
-existing installs. Users diagnose issues by integration version, so schema
-changes need to be visible in the version number even without an accompanying
-user-facing feature.
+entry schema changes - e.g. a new `unique_id` format, a bump of
+`CONFIG_ENTRY_VERSION` in `const.py` (which drives both `config_flow.py`'s
+`VERSION` and the target version in `__init__.py`'s `async_update_entry`
+call) plus its matching `async_migrate_entry` step in `__init__.py`, or
+anything else that needs a migration path for existing installs. Users
+diagnose issues by integration version, so schema changes need to be visible
+in the version number even without an accompanying user-facing feature.
 
 ### Poll/scan interval configurability
 
