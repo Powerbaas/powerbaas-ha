@@ -84,7 +84,7 @@ DIAGNOSTIC_SENSORS = [
     ),
     (
         "Meter URL",
-        ["system", "meterUrl"],
+        ["system", "p1MeterUrl"],
         None,
         None,
         None,
