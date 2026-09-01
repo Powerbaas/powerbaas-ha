@@ -38,4 +38,4 @@ If the ring is unreachable when Home Assistant sets up (or reloads) the integrat
 - `Color Blind` (switch) - alternate palette for meter-follow modes
 - `Power Usage` (sensor) - watts reported by the linked meter; unavailable in Standalone
 - `Status` (sensor) - Online / Offline
-- Diagnostic sensors from `/api/system`: firmware version, WiFi strength, up-since, IP address, meter URL
+- Diagnostic sensors from `/api/system`: firmware version, WiFi strength, up-since, IP address, meter URL (the linked P1/HomeWizard meter's URL; unavailable in Standalone)
