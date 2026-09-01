@@ -46,6 +46,9 @@ class RgbColorBlindSwitch(CoordinatorEntity, SwitchEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_color_blind"
         self._attr_device_info = _device_info(coordinator, entry)
+        # Bumped on every command; lets _apply_optimistic_update() detect
+        # and drop a stale response from an older, superseded command.
+        self._command_seq = 0
 
     @property
     def available(self) -> bool:
@@ -57,11 +60,34 @@ class RgbColorBlindSwitch(CoordinatorEntity, SwitchEntity):
         return bool(rgb.get("colorBlind"))
 
     async def async_turn_on(self, **kwargs) -> None:
+        self._command_seq += 1
+        seq = self._command_seq
         if not await self.coordinator.client.async_set_rgb(colorBlind=1):
             raise HomeAssistantError("Failed to enable color-blind mode on the Powerbaas RGB")
-        await self.coordinator.async_request_refresh()
+        self._apply_optimistic_update({"colorBlind": True}, seq)
 
     async def async_turn_off(self, **kwargs) -> None:
+        self._command_seq += 1
+        seq = self._command_seq
         if not await self.coordinator.client.async_set_rgb(colorBlind=0):
             raise HomeAssistantError("Failed to disable color-blind mode on the Powerbaas RGB")
-        await self.coordinator.async_request_refresh()
+        self._apply_optimistic_update({"colorBlind": False}, seq)
+
+    def _apply_optimistic_update(self, rgb_update: dict, seq: int) -> None:
+        """Merge a just-applied command into coordinator data immediately.
+
+        A refresh right after sending a command can race the firmware's own
+        apply latency and read back the pre-command state, which flashes the
+        entity back to the old value until the next scheduled poll corrects
+        it. Updating the coordinator's cached data directly avoids that
+        round trip; the next scheduled poll still reconciles with the device.
+
+        A call whose sequence number has been superseded by a later one
+        (e.g. its response arrived after a newer command's) skips applying
+        its update, so it can't clobber the newer, already-applied value.
+        """
+        if seq != self._command_seq:
+            return
+        data = dict(self.coordinator.data or {})
+        data["rgb"] = {**(data.get("rgb") or {}), **rgb_update}
+        self.coordinator.async_set_updated_data(data)

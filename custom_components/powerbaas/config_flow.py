@@ -14,6 +14,7 @@ from homeassistant.core import callback
 from .const import (
     DOMAIN,
     CONF_DEVICE_TYPE,
+    CONFIG_ENTRY_VERSION,
     DEVICE_TYPE_P1_METER,
     DEVICE_TYPE_BOILER_CONTROLLER,
     DEVICE_TYPE_AIRCO_BRIDGE,
@@ -46,7 +47,7 @@ class PowerbaasConfigFlow(
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):
-    VERSION = 2
+    VERSION = CONFIG_ENTRY_VERSION
 
     async def async_step_user(self, user_input=None):
         """Ask which kind of Powerbaas device is being added."""

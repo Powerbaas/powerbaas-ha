@@ -79,6 +79,9 @@ class AircoBridgeClimate(CoordinatorEntity, ClimateEntity):
             features |= ClimateEntityFeature.TURN_OFF
         self._attr_supported_features = features
         self._attr_device_info = _device_info(coordinator, entry)
+        # Bumped on every command; lets _apply_optimistic_update() detect
+        # and drop a stale response from an older, superseded command.
+        self._command_seq = 0
 
     @property
     def available(self) -> bool:
@@ -165,6 +168,8 @@ class AircoBridgeClimate(CoordinatorEntity, ClimateEntity):
         if temperature is None:
             temperature = clamp_temperature(airco.get("degrees") or DEFAULT_TEMPERATURE)
 
+        self._command_seq += 1
+        seq = self._command_seq
         ok = await self.coordinator.client.async_control(
             type_id=int(type_id),
             mode=int(mode),
@@ -173,4 +178,34 @@ class AircoBridgeClimate(CoordinatorEntity, ClimateEntity):
         )
         if not ok:
             raise HomeAssistantError("Failed to send command to the Airco Bridge")
-        await self.coordinator.async_request_refresh()
+        self._apply_optimistic_update(
+            {
+                "type": int(type_id),
+                "mode": int(mode),
+                "fanspeed": int(fanspeed),
+                "degrees": int(temperature),
+                "ison": mode != -1,
+            },
+            seq,
+        )
+
+    def _apply_optimistic_update(self, airco_update: dict[str, Any], seq: int) -> None:
+        """Merge a just-applied command into coordinator data immediately.
+
+        A refresh right after sending a command can race the firmware's own
+        apply latency and read back the pre-command state, which flashes the
+        entity back to the old value until the next scheduled poll corrects
+        it. Updating the coordinator's cached data directly avoids that
+        round trip; the next scheduled poll still reconciles with the device.
+
+        Dragging the temperature slider fires several commands in quick
+        succession, each awaiting its own network round trip. If an older
+        call's response arrives after a newer call's, applying it here
+        would clobber the newer, already-applied value - so a call whose
+        sequence number has been superseded by a later one skips applying.
+        """
+        if seq != self._command_seq:
+            return
+        data = dict(self.coordinator.data or {})
+        data["airco"] = {**(data.get("airco") or {}), **airco_update}
+        self.coordinator.async_set_updated_data(data)
