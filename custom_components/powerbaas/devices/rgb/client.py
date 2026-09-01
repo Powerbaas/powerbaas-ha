@@ -64,6 +64,13 @@ class RgbClient:
 
         Supported query params (firmware): brightness (0-255), on (0/1),
         colorBlind (0/1). Color/r/g/b/effect only apply in Standalone mode.
+
+        The firmware only reliably applies one kind of change per request -
+        e.g. combining r/g/b with effect in the same call makes it reload
+        its last-stored value for one of them instead of applying what was
+        just sent. Callers must send one kind of change (on, brightness,
+        r/g/b together, effect, or colorBlind) per call; see
+        RgbLight.async_turn_on for the sequential multi-call pattern.
         """
         url = f"{self.base_url}{API_RGB}"
         try:

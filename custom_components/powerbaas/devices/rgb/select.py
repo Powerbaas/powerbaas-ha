@@ -48,6 +48,9 @@ class RgbModeSelect(CoordinatorEntity, SelectEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_application_mode"
         self._attr_device_info = _device_info(coordinator, entry)
+        # Bumped on every command; lets async_select_option() detect and
+        # drop a stale response from an older, superseded command.
+        self._command_seq = 0
 
     @property
     def available(self) -> bool:
@@ -64,6 +67,20 @@ class RgbModeSelect(CoordinatorEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         if option not in APPLICATION_MODES:
             raise HomeAssistantError(f"Unknown Powerbaas RGB mode: {option}")
+        self._command_seq += 1
+        seq = self._command_seq
         if not await self.coordinator.client.async_set_mode(option):
             raise HomeAssistantError("Failed to set application mode on the Powerbaas RGB")
-        await self.coordinator.async_request_refresh()
+        # A refresh right after sending a command can race the firmware's
+        # own apply latency and read back the pre-command mode, which
+        # flashes the entity back to the old value until the next scheduled
+        # poll corrects it. Updating the coordinator's cached data directly
+        # avoids that round trip; the next scheduled poll still reconciles
+        # with the device. A call superseded by a later one (its response
+        # arrived after a newer command's) skips applying, so it can't
+        # clobber the newer, already-applied value.
+        if seq != self._command_seq:
+            return
+        data = dict(self.coordinator.data or {})
+        data["system"] = {**(data.get("system") or {}), "mode": option}
+        self.coordinator.async_set_updated_data(data)
