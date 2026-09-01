@@ -77,11 +77,18 @@ class AircoBridgeCoordinator(DataUpdateCoordinator):
                 translation_key="airco_bridge_offline",
                 translation_placeholders={"name": self.device_name},
             )
+            # DataUpdateCoordinator only calls async_update_listeners() for
+            # the *first* failed refresh after a success (see its
+            # last_update_success/previous_update_success check) - every
+            # failure after that is silently skipped. Without this, entities
+            # never learn device_online flipped to False and stay "available".
+            self.async_update_listeners()
 
     def _register_success(self) -> None:
         if self._consecutive_failures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES:
             self.device_online = True
             issue_registry.async_delete_issue(self.hass, DOMAIN, self._offline_issue_id)
+            self.async_update_listeners()
         self._consecutive_failures = 0
 
 

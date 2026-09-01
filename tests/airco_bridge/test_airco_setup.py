@@ -169,3 +169,38 @@ async def test_coordinator_recovers_after_successful_fetch(
     await coordinator.async_refresh()
 
     assert coordinator.device_online is True
+
+
+async def test_listeners_notified_when_device_goes_offline(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Entities (via CoordinatorEntity) only learn about device_online
+    flipping through the coordinator's listener callback - HA's
+    DataUpdateCoordinator only calls that callback for the *first* failed
+    refresh after a success, so registering the offline flag on a later
+    consecutive failure must explicitly notify listeners itself, or
+    entities never find out and stay stuck showing "available".
+    """
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.airco_bridge.client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+    coordinator = result["coordinator"]
+
+    observed_online_states: list[bool] = []
+    remove_listener = coordinator.async_add_listener(
+        lambda: observed_online_states.append(coordinator.device_online)
+    )
+    try:
+        for _ in range(OFFLINE_AFTER_CONSECUTIVE_FAILURES):
+            session.queue_exception(aiohttp.ClientError("boom"))
+            await coordinator.async_refresh()
+    finally:
+        remove_listener()
+
+    assert coordinator.device_online is False
+    assert False in observed_online_states

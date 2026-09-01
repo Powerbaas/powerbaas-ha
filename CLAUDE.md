@@ -64,6 +64,58 @@ This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real
 setting to scale against.
 
+### Device offline / unreachable handling (required for every device type)
+
+Every device type must handle the device being unreachable, both at setup
+time and during ongoing polling - this is not optional and should be built
+in from the first version of a new device type, not added later. P1 meter,
+Boiler Controller, Airco Bridge, and RGB all follow the same pattern:
+
+- **Setup gate**: before creating the coordinator, call the client's
+  `async_test_connection()` (or equivalent) and raise `ConfigEntryNotReady`
+  if it fails, so an offline device shows up as "Failed setup, will retry"
+  on the Integrations page instead of silently succeeding.
+- **Consecutive-failure counter**: track consecutive failed polls against
+  the shared `OFFLINE_AFTER_CONSECUTIVE_FAILURES` constant in `const.py`.
+  On hitting the threshold, flip a `device_online` flag to `False`, log a
+  warning, and raise an `issue_registry` repair issue (a
+  `<device_type>_offline` translation key, with matching entries added to
+  both `translations/en.json` and `translations/nl.json`). On the next
+  successful poll, flip `device_online` back to `True` and delete the
+  issue.
+- **Entity availability**: every entity's `available` property (besides a
+  dedicated status sensor, see below) should be gated on
+  `coordinator.device_online`, so the whole device goes unavailable
+  together rather than one missed poll flipping every sensor individually.
+- **Status sensor**: include one sensor that is always available and
+  reports "Online"/"Offline" as its state, so the device's connectivity is
+  visible even while every other entity is unavailable.
+
+If the device type is built on Home Assistant's `DataUpdateCoordinator`
+(P1 meter, RGB, Airco Bridge - Boiler Controller isn't, it drives entities
+via `async_dispatcher_send` on every poll instead), be aware that
+`DataUpdateCoordinator._async_refresh()` only calls
+`async_update_listeners()` for the *first* failed refresh after a success -
+every consecutive failure after that is silently skipped (see
+`homeassistant/helpers/update_coordinator.py`, the
+`last_update_success`/`previous_update_success` check). Since the
+`device_online` flag only flips on the Nth failure (at
+`OFFLINE_AFTER_CONSECUTIVE_FAILURES`), which is after that first
+notification already happened, entities never learn about it and stay
+stuck showing "available" unless the code where `device_online` flips
+explicitly calls `self.async_update_listeners()` (and again on recovery).
+This bit RGB and Airco Bridge in practice - see the fix in
+`devices/airco_bridge/__init__.py`'s and `devices/rgb/__init__.py`'s
+`_register_failure`/`_register_success`, and the regression test in
+`tests/airco_bridge/test_airco_setup.py::test_listeners_notified_when_device_goes_offline`.
+
+None of the existing device types special-case a specific "not found"
+signal (e.g. HTTP 404) differently from other failures (timeout, connection
+error, non-200 status) - any failed request counts the same toward the
+consecutive-failure counter. Keep new device types consistent with that
+unless there's a concrete reason to distinguish "not found" from "device
+down".
+
 ## Testing
 
 See [`docs/testing.md`](docs/testing.md) for how to run tests, test layout
