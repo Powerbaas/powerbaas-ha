@@ -22,7 +22,7 @@ You can change the power sensor or the module URL later from the integration's o
 Set via the **Control Mode** select entity:
 
 - **Auto** - the controller computes the current grid surplus and adjusts the boiler's heating percentage automatically
-- **Manual** - heats at a fixed wattage, set via the **Target Power** number entity
+- **Manual** - heats at a fixed wattage, set via the **Target Power** number entity. In Auto/On/Off mode, **Target Power** is read-only and mirrors the wattage the controller is currently commanding (in Auto mode this is a live log of the auto-computed value), so it stays available across mode switches instead of only showing up in Manual mode. Its value is flushed to storage right before Home Assistant shuts down, so it survives a restart without writing to disk on every Auto-mode tick.
 - **On** - heating element always at 100%
 - **Off** - heating element always off
 

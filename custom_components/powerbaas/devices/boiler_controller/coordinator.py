@@ -30,10 +30,10 @@ from .const import (
     CONF_POWER_SENSOR_TYPE,
     CONF_RETURN_SENSOR,
     CONF_USAGE_SENSOR,
-    DEFAULT_MANUAL_WATTS,
     DEFAULT_MAX_HEATING_WATTS,
     DEFAULT_MIN_HEATING_WATTS,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_TARGET_WATTS,
     MAX_HEATING_WATTS_OPTIONS,
     POWER_SENSOR_TYPE_NET,
     POWER_SENSOR_TYPE_SPLIT,
@@ -47,7 +47,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
     """Poll /api/status and /api/system, and own BC's control/calibration logic.
 
     coordinator.data holds both poll-driven fields ("status", "system") and
-    command-driven fields ("control_mode", "manual_watts",
+    command-driven fields ("control_mode", "target_watts",
     "max_heating_watts", "min_heating_watts", "calibration_active") - the
     latter are carried forward on every poll cycle (see
     _async_update_data), since a fresh poll must not wipe out state that
@@ -114,8 +114,14 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             else DEFAULT_MAX_HEATING_WATTS
         )
 
-        stored_watts = config_entry.options.get("manual_watts", DEFAULT_MANUAL_WATTS)
-        manual_watts = max(0, min(max_heating_watts, int(stored_watts)))
+        # Not persisted on every write (this field doubles as a live "last
+        # commanded watts" log across every control mode - see the auto
+        # branch in _async_update() - so writing to config-entry options on
+        # every auto tick would be excessive I/O). Instead it's written once
+        # on HA shutdown (see async_persist_target_watts_on_stop(), wired up
+        # in __init__.py) and restored here, so a restart doesn't lose it.
+        stored_target_watts = config_entry.options.get("target_watts", DEFAULT_TARGET_WATTS)
+        target_watts = max(0, min(max_heating_watts, int(stored_target_watts)))
 
         stored_min_watts = config_entry.options.get("min_heating_watts", DEFAULT_MIN_HEATING_WATTS)
         min_heating_watts = max(0, min(max_heating_watts, int(stored_min_watts)))
@@ -126,7 +132,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             "status": None,
             "system": None,
             "control_mode": control_mode,
-            "manual_watts": manual_watts,
+            "target_watts": target_watts,
             "max_heating_watts": max_heating_watts,
             "min_heating_watts": min_heating_watts,
             "calibration_active": False,
@@ -317,7 +323,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
                 return
 
             if control_mode == BOILER_MODE_MANUAL:
-                await self._apply_manual_watts()
+                await self._apply_target_watts()
                 return
 
             # Auto mode: compute signed surplus (positive=export, negative=import)
@@ -350,6 +356,11 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             )
 
             await self.device_client.async_set_target_watts(available_watts)
+            # Mirror the auto-computed value into the same field the Manual
+            # mode number entity reads/writes, so "Target Power" shows what
+            # every mode is doing, not just Manual (the caller's finally
+            # block below notifies listeners for this tick either way).
+            self.data = {**self.data, "target_watts": available_watts}
 
             timestamp = dt_util.utcnow()
             self._last_auto_update = timestamp
@@ -491,6 +502,25 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             data["min_heating_watts"] = parsed
             self._persist_options(min_heating_watts=parsed)
 
+    @callback
+    def async_persist_target_watts_on_stop(self, event: Event) -> None:
+        """Persist the current target watts once, right before HA shuts down.
+
+        Wired up in __init__.py via EVENT_HOMEASSISTANT_STOP rather than
+        persisted on every write/tick, since Auto mode updates target_watts
+        as often as every poll - persisting that continuously would be
+        excessive config-entry-option I/O for a value that only needs to
+        survive an actual restart.
+
+        Only persisted in Manual mode: in Auto/On/Off mode target_watts is
+        just a live log of whatever was last commanded, not a meaningful
+        setpoint to restore - it'll be recomputed (or isn't watts-based at
+        all) as soon as that mode runs again after restart.
+        """
+        if self.data.get("control_mode") != BOILER_MODE_MANUAL:
+            return
+        self._persist_options(target_watts=self.data.get("target_watts"))
+
     def _persist_options(self, **updates: Any) -> None:
         """Store runtime preferences in the config entry options."""
         if not updates:
@@ -552,24 +582,29 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({**self.data, "control_mode": mode})
         await self._async_update()
 
-    async def async_set_manual_watts(self, watts: int) -> None:
-        """Store manual target watts and apply when manual mode is active."""
+    async def async_set_target_watts(self, watts: int) -> None:
+        """Store the target watts and apply it now that Manual mode is active.
+
+        Only called from the Target Power number entity, which itself only
+        allows writes while `control_mode == BOILER_MODE_MANUAL` - so the
+        mode check below is a currently-redundant safety net, not the
+        primary gate.
+        """
         if (self.data or {}).get("calibration_active"):
-            raise RuntimeError("Cannot change manual watts during calibration")
+            raise RuntimeError("Cannot change target watts during calibration")
         # the watts are already clamped to the max heating watts
         # but just to be safe, we clamp it again here to ensure it's within valid bounds
         watts = max(0, min(self.data["max_heating_watts"], int(watts)))
-        if watts == self.data.get("manual_watts"):
+        if watts == self.data.get("target_watts"):
             return
-        self._persist_options(manual_watts=watts)
-        self.async_set_updated_data({**self.data, "manual_watts": watts})
+        self.async_set_updated_data({**self.data, "target_watts": watts})
         if self.data.get("control_mode") == BOILER_MODE_MANUAL:
-            await self._apply_manual_watts()
+            await self._apply_target_watts()
 
-    async def _apply_manual_watts(self) -> None:
-        """Send the stored manual target watts to the device."""
-        watts = self.data.get("manual_watts", 0)
-        _LOGGER.debug("Applying manual power override: %sW", watts)
+    async def _apply_target_watts(self) -> None:
+        """Send the stored target watts to the device (Manual mode only)."""
+        watts = self.data.get("target_watts", 0)
+        _LOGGER.debug("Applying target power: %sW", watts)
         success = await self.device_client.async_set_target_watts(watts)
         if success:
             self._last_control_update = dt_util.utcnow()

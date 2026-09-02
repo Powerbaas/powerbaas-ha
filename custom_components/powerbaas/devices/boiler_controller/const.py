@@ -35,8 +35,9 @@ BOILER_MODE_OFF = "off"
 BOILER_MODE_CALIBRATING = "calibrating"
 BOILER_MODES = [BOILER_MODE_AUTO, BOILER_MODE_MANUAL, BOILER_MODE_ON, BOILER_MODE_OFF]
 
-# Manual mode defaults
-DEFAULT_MANUAL_WATTS = 0
+# Target power default (Manual mode's initial/idle setpoint; Auto mode
+# overwrites this at runtime with whatever it last commanded the device to)
+DEFAULT_TARGET_WATTS = 0
 
 # Seconds between device status polls (updates all sensor values)
 DEFAULT_POLL_INTERVAL = 10

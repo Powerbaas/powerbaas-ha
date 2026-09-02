@@ -53,7 +53,7 @@ class BoilerControllerManualBrightnessNumber(CoordinatorEntity, NumberEntity):
         super().__init__(coordinator)
         self.config_entry = config_entry
         self._attr_name = f"{config_entry.title} Target Power"
-        self._attr_unique_id = f"{config_entry.entry_id}_manual_watts"
+        self._attr_unique_id = f"{config_entry.entry_id}_target_watts"
 
     @property
     def native_max_value(self) -> float:
@@ -61,21 +61,24 @@ class BoilerControllerManualBrightnessNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def native_value(self) -> float:
-        return (self.coordinator.data or {}).get("manual_watts", 0)
+        return (self.coordinator.data or {}).get("target_watts", 0)
 
     async def async_set_native_value(self, value: float) -> None:
-        if (self.coordinator.data or {}).get("calibration_active"):
-            raise HomeAssistantError("Cannot change manual power during calibration")
-        await self.coordinator.async_set_manual_watts(int(value))
+        data = self.coordinator.data or {}
+        if data.get("calibration_active"):
+            raise HomeAssistantError("Cannot change target power during calibration")
+        if data.get("control_mode") != BOILER_MODE_MANUAL:
+            raise HomeAssistantError("Target Power can only be set in Manual mode")
+        await self.coordinator.async_set_target_watts(int(value))
 
     @property
     def available(self) -> bool:
+        # Always available (not gated on Manual mode): every control mode
+        # keeps this field updated with the watts it last commanded, so it
+        # doubles as a log of what the controller (including Auto mode) is
+        # actually doing - see the auto branch in _async_update().
         data = self.coordinator.data or {}
-        return (
-            self.coordinator.device_online
-            and not data.get("calibration_active")
-            and data.get("control_mode") == BOILER_MODE_MANUAL
-        )
+        return self.coordinator.device_online and not data.get("calibration_active")
 
     @property
     def device_info(self) -> dict[str, Any]:

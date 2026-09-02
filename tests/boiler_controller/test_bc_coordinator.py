@@ -21,7 +21,7 @@ import asyncio
 import logging
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -53,7 +53,7 @@ class _FakeHass:
         self.data: dict[str, Any] = {}
         self._states = states or {}
         self.states = SimpleNamespace(get=self._states.get)
-        self.config_entries = SimpleNamespace(async_update_entry=lambda *a, **k: None)
+        self.config_entries = SimpleNamespace(async_update_entry=MagicMock())
 
 
 class _FakeBCClient:
@@ -103,7 +103,7 @@ def _make_coordinator(
     control_mode: str = BOILER_MODE_AUTO,
     max_heating_watts: int = 2000,
     min_heating_watts: int = 0,
-    manual_watts: int = 0,
+    target_watts: int = 0,
     power_sensor_type: str = POWER_SENSOR_TYPE_NET,
     states: dict[str, _FakeState] | None = None,
     hass: Any = None,
@@ -120,7 +120,7 @@ def _make_coordinator(
         "status": None,
         "system": None,
         "control_mode": control_mode,
-        "manual_watts": manual_watts,
+        "target_watts": target_watts,
         "max_heating_watts": max_heating_watts,
         "min_heating_watts": min_heating_watts,
         "calibration_active": False,
@@ -237,8 +237,8 @@ async def test_async_update_on_mode_sets_full_percent() -> None:
     assert coordinator.device_client.heating_percentage_calls == [100]
 
 
-async def test_async_update_manual_mode_applies_manual_watts() -> None:
-    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, manual_watts=750)
+async def test_async_update_manual_mode_applies_target_watts() -> None:
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, target_watts=750)
 
     await coordinator._async_update()
 
@@ -258,6 +258,9 @@ async def test_async_update_auto_mode_combines_boiler_draw_and_surplus() -> None
     # available = boiler_watts(400) + surplus(300) = 700
     assert coordinator.device_client.target_watts_calls == [700]
     assert coordinator._last_power_value == 300.0
+    # Auto mode mirrors what it commanded into "target_watts" too, so the
+    # Target Power number entity reflects it even outside Manual mode.
+    assert coordinator.data["target_watts"] == 700
 
 
 async def test_async_update_auto_mode_clamps_to_max_heating_watts() -> None:
@@ -328,7 +331,7 @@ async def test_set_heating_percentage_clamps_out_of_range_values() -> None:
 
 
 # ---------------------------------------------------------------------------
-# async_set_control_mode / async_set_manual_watts / async_set_min_heating_watts
+# async_set_control_mode / async_set_target_watts / async_set_min_heating_watts
 # ---------------------------------------------------------------------------
 
 
@@ -357,21 +360,44 @@ async def test_async_set_control_mode_noop_when_unchanged() -> None:
     assert coordinator.device_client.heating_percentage_calls == []
 
 
-async def test_async_set_manual_watts_clamps_to_max() -> None:
+async def test_async_set_target_watts_clamps_to_max() -> None:
     coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, max_heating_watts=1000)
 
-    await coordinator.async_set_manual_watts(5000)
+    await coordinator.async_set_target_watts(5000)
 
-    assert coordinator.data["manual_watts"] == 1000
+    assert coordinator.data["target_watts"] == 1000
     assert coordinator.device_client.target_watts_calls == [1000]
 
 
-async def test_async_set_manual_watts_raises_during_calibration() -> None:
+async def test_async_set_target_watts_raises_during_calibration() -> None:
     coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL)
     coordinator.data = {**coordinator.data, "calibration_active": True}
 
     with pytest.raises(RuntimeError):
-        await coordinator.async_set_manual_watts(500)
+        await coordinator.async_set_target_watts(500)
+
+
+def test_async_persist_target_watts_on_stop_writes_current_value_in_manual_mode() -> None:
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, target_watts=700)
+
+    coordinator.async_persist_target_watts_on_stop(None)
+
+    coordinator.hass.config_entries.async_update_entry.assert_called_once_with(
+        coordinator.config_entry, options={"target_watts": 700}
+    )
+
+
+def test_async_persist_target_watts_on_stop_noop_outside_manual_mode() -> None:
+    """Auto/On/Off mode's target_watts is a live log, not a meaningful
+
+    setpoint to restore - see async_persist_target_watts_on_stop()'s
+    docstring.
+    """
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_AUTO, target_watts=700)
+
+    coordinator.async_persist_target_watts_on_stop(None)
+
+    coordinator.hass.config_entries.async_update_entry.assert_not_called()
 
 
 async def test_async_set_min_heating_watts_clamps_to_max() -> None:

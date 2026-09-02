@@ -19,17 +19,17 @@ from custom_components.powerbaas.devices.boiler_controller.number import (
 
 
 def _manual_number(
-    *, control_mode, manual_watts=0, max_heating_watts=2000, calibration_active=False, online=True
+    *, control_mode, target_watts=0, max_heating_watts=2000, calibration_active=False, online=True
 ) -> BoilerControllerManualBrightnessNumber:
     coordinator = SimpleNamespace(
         data={
             "control_mode": control_mode,
-            "manual_watts": manual_watts,
+            "target_watts": target_watts,
             "max_heating_watts": max_heating_watts,
             "calibration_active": calibration_active,
         },
         device_online=online,
-        async_set_manual_watts=AsyncMock(),
+        async_set_target_watts=AsyncMock(),
     )
     entry = MagicMock()
     entry.entry_id = "bc_entry"
@@ -40,7 +40,7 @@ def _manual_number(
 
 
 def test_manual_number_value_and_max() -> None:
-    number = _manual_number(control_mode=BOILER_MODE_MANUAL, manual_watts=500, max_heating_watts=1500)
+    number = _manual_number(control_mode=BOILER_MODE_MANUAL, target_watts=500, max_heating_watts=1500)
 
     assert BoilerControllerManualBrightnessNumber.native_value.fget(number) == 500
     assert BoilerControllerManualBrightnessNumber.native_max_value.fget(number) == 1500
@@ -51,7 +51,7 @@ async def test_manual_number_set_value_delegates() -> None:
 
     await BoilerControllerManualBrightnessNumber.async_set_native_value(number, 300)
 
-    number.coordinator.async_set_manual_watts.assert_awaited_once_with(300)
+    number.coordinator.async_set_target_watts.assert_awaited_once_with(300)
 
 
 async def test_manual_number_set_value_raises_during_calibration() -> None:
@@ -61,10 +61,17 @@ async def test_manual_number_set_value_raises_during_calibration() -> None:
         await BoilerControllerManualBrightnessNumber.async_set_native_value(number, 300)
 
 
-def test_manual_number_available_only_in_manual_mode() -> None:
+def test_manual_number_available_in_any_mode() -> None:
     number = _manual_number(control_mode=BOILER_MODE_AUTO)
 
-    assert BoilerControllerManualBrightnessNumber.available.fget(number) is False
+    assert BoilerControllerManualBrightnessNumber.available.fget(number) is True
+
+
+async def test_manual_number_set_value_raises_outside_manual_mode() -> None:
+    number = _manual_number(control_mode=BOILER_MODE_AUTO)
+
+    with pytest.raises(HomeAssistantError):
+        await BoilerControllerManualBrightnessNumber.async_set_native_value(number, 300)
 
 
 def test_manual_number_unavailable_when_offline() -> None:

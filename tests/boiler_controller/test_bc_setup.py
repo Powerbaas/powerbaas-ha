@@ -71,7 +71,13 @@ class _FakeSession:
         return self._next(url)
 
 
-def _make_entry(hass, *, device_url: str = "http://bc.local", power_sensor: str = "sensor.net_power"):
+def _make_entry(
+    hass,
+    *,
+    device_url: str = "http://bc.local",
+    power_sensor: str = "sensor.net_power",
+    options: dict | None = None,
+):
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -81,6 +87,7 @@ def _make_entry(hass, *, device_url: str = "http://bc.local", power_sensor: str 
             CONF_POWER_SENSOR: power_sensor,
             "device_id": "pb-bc-test",
         },
+        options=options or {},
         title="Test BC",
     )
     entry.add_to_hass(hass)
@@ -195,7 +202,7 @@ async def test_coordinator_recovers_after_successful_fetch(
 async def test_command_driven_fields_survive_a_poll_cycle(
     hass, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_async_update_data() must carry forward control_mode/manual_watts/etc.
+    """_async_update_data() must carry forward control_mode/target_watts/etc.
 
     from the previous cycle, since they aren't re-fetched from the device -
     forgetting this would wipe them back to defaults every poll.
@@ -209,14 +216,69 @@ async def test_command_driven_fields_survive_a_poll_cycle(
 
     result = await _call_async_setup_entry(hass, _make_entry(hass))
     coordinator = result["coordinator"]
-    coordinator.data = {**coordinator.data, "control_mode": BOILER_MODE_MANUAL, "manual_watts": 500}
+    coordinator.data = {**coordinator.data, "control_mode": BOILER_MODE_MANUAL, "target_watts": 500}
 
     session.queue_response({"system": {"firmwareVersion": 9}})
     session.queue_response({"power": 0, "heatingPercentage": 0, "maxHeatingWatts": 2000})
     await coordinator.async_refresh()
 
     assert coordinator.data["control_mode"] == BOILER_MODE_MANUAL
-    assert coordinator.data["manual_watts"] == 500
+    assert coordinator.data["target_watts"] == 500
+
+
+async def test_target_watts_restored_from_options_on_setup(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """target_watts isn't restored on every write (see coordinator.py), only
+
+    persisted once on HA shutdown - so setup must read that persisted value
+    back, otherwise a restart would silently reset it to the default.
+    """
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.boiler_controller.bc_client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(
+        hass, _make_entry(hass, options={"target_watts": 500})
+    )
+
+    assert result["coordinator"].data["target_watts"] == 500
+
+
+async def test_target_watts_persisted_on_homeassistant_stop(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """EVENT_HOMEASSISTANT_STOP must flush the current target_watts to the
+
+    config entry options so it survives the restart - see
+    async_persist_target_watts_on_stop() and its wiring in __init__.py.
+    Only meaningful in Manual mode - see that method's docstring for why.
+    """
+    from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+
+    session = _FakeSession()
+    _queue_successful_setup(session)
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.boiler_controller.bc_client.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    entry = _make_entry(hass)
+    result = await _call_async_setup_entry(hass, entry)
+    coordinator = result["coordinator"]
+    coordinator.data = {
+        **coordinator.data,
+        "control_mode": BOILER_MODE_MANUAL,
+        "target_watts": 750,
+    }
+
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
+    await hass.async_block_till_done()
+
+    assert entry.options["target_watts"] == 750
 
 
 async def test_max_heating_watts_cascade_clamps_min_inside_update_data(
