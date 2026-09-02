@@ -142,7 +142,6 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self._consecutive_failures = 0
         self._offline_issue_id = f"boiler_controller_offline_{config_entry.entry_id}"
         self._current_dimmer_percentage: int | None = None
-        self._last_control_update = None
         self._last_power_value = None
         self._last_auto_update = None
         self._missing_sensor_log: dict[str, Any] = {}
@@ -250,8 +249,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
 
         Only relevant in Auto mode - Manual/On/Off targets don't depend on
         the power sensor, so reacting to it there would just re-send the
-        same command on every sensor tick and spuriously bump
-        last_control_update.
+        same command on every sensor tick.
         """
         data = self.data or {}
         if data.get("calibration_active"):
@@ -362,9 +360,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             # block below notifies listeners for this tick either way).
             self.data = {**self.data, "target_watts": available_watts}
 
-            timestamp = dt_util.utcnow()
-            self._last_auto_update = timestamp
-            self._last_control_update = timestamp
+            self._last_auto_update = dt_util.utcnow()
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("Error during controller update: %s", err)
@@ -605,9 +601,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         """Send the stored target watts to the device (Manual mode only)."""
         watts = self.data.get("target_watts", 0)
         _LOGGER.debug("Applying target power: %sW", watts)
-        success = await self.device_client.async_set_target_watts(watts)
-        if success:
-            self._last_control_update = dt_util.utcnow()
+        await self.device_client.async_set_target_watts(watts)
         await self.async_request_refresh()
 
     async def async_set_max_heating_watts(self, watts: int) -> None:

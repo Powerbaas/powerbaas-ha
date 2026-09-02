@@ -140,7 +140,6 @@ def _make_coordinator(
     coordinator._calibration_lock = asyncio.Lock()
     coordinator._last_power_value = None
     coordinator._last_auto_update = None
-    coordinator._last_control_update = None
     coordinator._consecutive_failures = 0
     coordinator.device_online = True
     coordinator._offline_issue_id = "boiler_controller_offline_entry1"

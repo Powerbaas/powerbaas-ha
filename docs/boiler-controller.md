@@ -65,6 +65,5 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 - `SSR` (switch) - the module's SSR relay state
 - `Calibrate Start` / `Calibrate Stop` (buttons)
 - `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
-- `Last Control Update` (sensor) - timestamp of the last heating adjustment
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address

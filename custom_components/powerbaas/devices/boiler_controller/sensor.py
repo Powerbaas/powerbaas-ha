@@ -1,13 +1,12 @@
 import logging
 from typing import Any, Optional
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import dt as dt_util
 
 from ...const import DOMAIN
 from .const import BOILER_MODE_MANUAL, MAIN_SENSORS, DIAGNOSTIC_SENSORS
@@ -42,7 +41,6 @@ async def async_setup_entry(
 
     sensors: list[SensorEntity] = [
         BoilerControllerStatusSensor(coordinator, config_entry),
-        LastDimmerUpdateSensor(coordinator, config_entry),
     ]
 
     for name, path, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in (
@@ -143,56 +141,9 @@ class BoilerControllerStatusSensor(CoordinatorEntity, SensorEntity):
                 missing_any = True
         attrs["sensors_status"] = "missing" if missing_any else "available"
 
-        attrs["last_control_update"] = (
-            coordinator._last_control_update.isoformat()
-            if coordinator._last_control_update
-            else None
-        )
         if coordinator._last_power_value is not None:
             attrs["last_power_value"] = coordinator._last_power_value
 
-        return attrs
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return _device_info(self.coordinator, self.config_entry)
-
-
-class LastDimmerUpdateSensor(CoordinatorEntity, SensorEntity):
-    """Sensor showing when the controller last adjusted the heating percentage."""
-
-    _attr_should_poll = False
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
-        super().__init__(coordinator)
-        self.config_entry = config_entry
-        self._attr_name = f"{config_entry.title} Last Control Update"
-        self._attr_unique_id = f"{config_entry.entry_id}_last_dimmer_update"
-        self._attr_icon = "mdi:clock-outline"
-
-    @property
-    def available(self) -> bool:
-        return True
-
-    @property
-    def native_value(self):
-        value = self.coordinator._last_control_update
-        if isinstance(value, str):
-            parsed = dt_util.parse_datetime(value)
-            if parsed is not None:
-                return parsed
-        return value
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        attrs = {
-            "update_method": "event_driven",
-            "integration_version": str(self.coordinator.integration_version),
-        }
-        if self.coordinator._last_power_value is not None:
-            attrs["last_power_value"] = self.coordinator._last_power_value
         return attrs
 
     @property

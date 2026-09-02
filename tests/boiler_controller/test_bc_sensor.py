@@ -9,7 +9,6 @@ from custom_components.powerbaas.devices.boiler_controller.const import MAIN_SEN
 from custom_components.powerbaas.devices.boiler_controller.sensor import (
     BoilerControllerFieldSensor,
     BoilerControllerStatusSensor,
-    LastDimmerUpdateSensor,
 )
 
 
@@ -69,7 +68,6 @@ def _status_sensor(
         device_url="http://bc.local",
         poll_interval=10,
         integration_version="1.0",
-        _last_control_update=None,
         _last_power_value=None,
     )
     entry = MagicMock()
@@ -110,20 +108,3 @@ def test_status_sensor_idle_state() -> None:
     sensor = _status_sensor(online=True, status={"heatingPercentage": 0})
 
     assert BoilerControllerStatusSensor.state.fget(sensor) == "Idle"
-
-
-def test_last_dimmer_update_sensor_always_available_and_defaults_none() -> None:
-    coordinator = SimpleNamespace(
-        _last_control_update=None,
-        _last_power_value=None,
-        integration_version="1.0",
-        data={"system": {}},
-    )
-    entry = MagicMock()
-    entry.entry_id = "bc_entry"
-    sensor = object.__new__(LastDimmerUpdateSensor)
-    sensor.coordinator = coordinator
-    sensor.config_entry = entry
-
-    assert LastDimmerUpdateSensor.available.fget(sensor) is True
-    assert LastDimmerUpdateSensor.native_value.fget(sensor) is None
