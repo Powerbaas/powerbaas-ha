@@ -115,7 +115,7 @@ Boiler Controller's coordinator also owns command methods (mode/watts/SSR/
 calibration setters) beyond just polling - unlike RGB/Airco's thin
 coordinators, this is deliberate: that logic is genuinely device-specific
 business logic, not boilerplate, so it doesn't belong split onto entities.
-Command-driven fields (`control_mode`, `manual_watts`, `max_heating_watts`,
+Command-driven fields (`control_mode`, `target_watts`, `max_heating_watts`,
 `min_heating_watts`, `calibration_active`) live in `coordinator.data`
 alongside the polled `status`/`system` fields, pushed via
 `async_set_updated_data()`; `_async_update_data()` carries those

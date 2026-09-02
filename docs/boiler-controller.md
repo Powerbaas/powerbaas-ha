@@ -22,7 +22,7 @@ You can change the power sensor or the module URL later from the integration's o
 Set via the **Control Mode** select entity:
 
 - **Auto** - the controller computes the current grid surplus and adjusts the boiler's heating percentage automatically
-- **Manual** - heats at a fixed wattage, set via the **Manual Power** number entity
+- **Manual** - heats at a fixed wattage, set via the **Target Power** number entity. In Auto/On/Off mode, **Target Power** is read-only and mirrors the wattage the controller is currently commanding (in Auto mode this is a live log of the auto-computed value), so it stays available across mode switches instead of only showing up in Manual mode. Its value is flushed to storage right before Home Assistant shuts down, so it survives a restart without writing to disk on every Auto-mode tick.
 - **On** - heating element always at 100%
 - **Off** - heating element always off
 
@@ -59,12 +59,11 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 ## Entities created
 
 - `Control Mode` (select) - auto / manual / on / off
-- `Manual Power` (number) - target watts used in manual mode
+- `Target Power` (number) - target watts used in manual mode
 - `Max Heating Power` (select) - configurable safety ceiling, in watts (breaker presets)
 - `Minimum Heating Power` (number) - Auto-mode-only floor, in watts
 - `SSR` (switch) - the module's SSR relay state
 - `Calibrate Start` / `Calibrate Stop` (buttons)
 - `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
-- `Last Control Update` (sensor) - timestamp of the last heating adjustment
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address

@@ -4,6 +4,7 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv, issue_registry
 from homeassistant.helpers.event import async_track_state_change_event
@@ -57,6 +58,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
             hass,
             coordinator._tracked_entities,
             coordinator._async_power_sensor_changed,
+        )
+    )
+    entry.async_on_unload(
+        hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STOP, coordinator.async_persist_target_watts_on_stop
         )
     )
     _LOGGER.info(

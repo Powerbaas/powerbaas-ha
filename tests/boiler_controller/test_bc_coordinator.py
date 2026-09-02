@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.util import dt as dt_util
 
 from custom_components.powerbaas.devices.boiler_controller.const import (
     BOILER_MODE_AUTO,
@@ -53,7 +55,7 @@ class _FakeHass:
         self.data: dict[str, Any] = {}
         self._states = states or {}
         self.states = SimpleNamespace(get=self._states.get)
-        self.config_entries = SimpleNamespace(async_update_entry=lambda *a, **k: None)
+        self.config_entries = SimpleNamespace(async_update_entry=MagicMock())
 
 
 class _FakeBCClient:
@@ -103,7 +105,7 @@ def _make_coordinator(
     control_mode: str = BOILER_MODE_AUTO,
     max_heating_watts: int = 2000,
     min_heating_watts: int = 0,
-    manual_watts: int = 0,
+    target_watts: int = 0,
     power_sensor_type: str = POWER_SENSOR_TYPE_NET,
     states: dict[str, _FakeState] | None = None,
     hass: Any = None,
@@ -120,7 +122,7 @@ def _make_coordinator(
         "status": None,
         "system": None,
         "control_mode": control_mode,
-        "manual_watts": manual_watts,
+        "target_watts": target_watts,
         "max_heating_watts": max_heating_watts,
         "min_heating_watts": min_heating_watts,
         "calibration_active": False,
@@ -140,7 +142,6 @@ def _make_coordinator(
     coordinator._calibration_lock = asyncio.Lock()
     coordinator._last_power_value = None
     coordinator._last_auto_update = None
-    coordinator._last_control_update = None
     coordinator._consecutive_failures = 0
     coordinator.device_online = True
     coordinator._offline_issue_id = "boiler_controller_offline_entry1"
@@ -237,8 +238,8 @@ async def test_async_update_on_mode_sets_full_percent() -> None:
     assert coordinator.device_client.heating_percentage_calls == [100]
 
 
-async def test_async_update_manual_mode_applies_manual_watts() -> None:
-    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, manual_watts=750)
+async def test_async_update_manual_mode_applies_target_watts() -> None:
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, target_watts=750)
 
     await coordinator._async_update()
 
@@ -258,6 +259,9 @@ async def test_async_update_auto_mode_combines_boiler_draw_and_surplus() -> None
     # available = boiler_watts(400) + surplus(300) = 700
     assert coordinator.device_client.target_watts_calls == [700]
     assert coordinator._last_power_value == 300.0
+    # Auto mode mirrors what it commanded into "target_watts" too, so the
+    # Target Power number entity reflects it even outside Manual mode.
+    assert coordinator.data["target_watts"] == 700
 
 
 async def test_async_update_auto_mode_clamps_to_max_heating_watts() -> None:
@@ -328,7 +332,7 @@ async def test_set_heating_percentage_clamps_out_of_range_values() -> None:
 
 
 # ---------------------------------------------------------------------------
-# async_set_control_mode / async_set_manual_watts / async_set_min_heating_watts
+# async_set_control_mode / async_set_target_watts / async_set_min_heating_watts
 # ---------------------------------------------------------------------------
 
 
@@ -357,21 +361,44 @@ async def test_async_set_control_mode_noop_when_unchanged() -> None:
     assert coordinator.device_client.heating_percentage_calls == []
 
 
-async def test_async_set_manual_watts_clamps_to_max() -> None:
+async def test_async_set_target_watts_clamps_to_max() -> None:
     coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, max_heating_watts=1000)
 
-    await coordinator.async_set_manual_watts(5000)
+    await coordinator.async_set_target_watts(5000)
 
-    assert coordinator.data["manual_watts"] == 1000
+    assert coordinator.data["target_watts"] == 1000
     assert coordinator.device_client.target_watts_calls == [1000]
 
 
-async def test_async_set_manual_watts_raises_during_calibration() -> None:
+async def test_async_set_target_watts_raises_during_calibration() -> None:
     coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL)
     coordinator.data = {**coordinator.data, "calibration_active": True}
 
     with pytest.raises(RuntimeError):
-        await coordinator.async_set_manual_watts(500)
+        await coordinator.async_set_target_watts(500)
+
+
+def test_async_persist_target_watts_on_stop_writes_current_value_in_manual_mode() -> None:
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_MANUAL, target_watts=700)
+
+    coordinator.async_persist_target_watts_on_stop(None)
+
+    coordinator.hass.config_entries.async_update_entry.assert_called_once_with(
+        coordinator.config_entry, options={"target_watts": 700}
+    )
+
+
+def test_async_persist_target_watts_on_stop_noop_outside_manual_mode() -> None:
+    """Auto/On/Off mode's target_watts is a live log, not a meaningful
+
+    setpoint to restore - see async_persist_target_watts_on_stop()'s
+    docstring.
+    """
+    coordinator = _make_coordinator(control_mode=BOILER_MODE_AUTO, target_watts=700)
+
+    coordinator.async_persist_target_watts_on_stop(None)
+
+    coordinator.hass.config_entries.async_update_entry.assert_not_called()
 
 
 async def test_async_set_min_heating_watts_clamps_to_max() -> None:
@@ -436,6 +463,71 @@ def test_apply_max_heating_watts_from_status_clamps_min_down_when_it_exceeds_new
 
     assert data["max_heating_watts"] == 1000
     assert data["min_heating_watts"] == 1000
+
+
+# ---------------------------------------------------------------------------
+# _apply_boot_time
+# ---------------------------------------------------------------------------
+
+
+def test_apply_boot_time_computes_value_when_none_stored_yet() -> None:
+    coordinator = _make_coordinator()
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt_util.UTC)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 3600}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == now - timedelta(seconds=3600)
+
+
+def test_apply_boot_time_reuses_previous_value_within_drift_tolerance() -> None:
+    previous_boot_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=dt_util.UTC)
+    coordinator = _make_coordinator()
+    coordinator.data = {**coordinator.data, "system": {"bootTime": previous_boot_time}}
+    # Polled an hour later with an uptime that, modulo a few seconds of
+    # request-latency jitter, still points back to the same boot time.
+    now = previous_boot_time + timedelta(hours=1, seconds=5)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 3600}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == previous_boot_time
+
+
+def test_apply_boot_time_recomputes_when_drift_exceeds_tolerance() -> None:
+    """A device reboot resets uptimeSeconds close to zero, which should be
+    treated as a real change rather than jitter."""
+    previous_boot_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=dt_util.UTC)
+    coordinator = _make_coordinator()
+    coordinator.data = {**coordinator.data, "system": {"bootTime": previous_boot_time}}
+    now = previous_boot_time + timedelta(hours=2)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 30}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == now - timedelta(seconds=30)
+    assert system["bootTime"] != previous_boot_time
+
+
+def test_apply_boot_time_noop_when_uptime_seconds_missing() -> None:
+    coordinator = _make_coordinator()
+
+    system: dict = {}
+    coordinator._apply_boot_time(system)
+
+    assert "bootTime" not in system
 
 
 # ---------------------------------------------------------------------------
