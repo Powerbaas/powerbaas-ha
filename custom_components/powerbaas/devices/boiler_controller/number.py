@@ -52,7 +52,7 @@ class BoilerControllerManualBrightnessNumber(CoordinatorEntity, NumberEntity):
     def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self.config_entry = config_entry
-        self._attr_name = f"{config_entry.title} Manual Power"
+        self._attr_name = f"{config_entry.title} Target Power"
         self._attr_unique_id = f"{config_entry.entry_id}_manual_watts"
 
     @property

@@ -22,7 +22,7 @@ You can change the power sensor or the module URL later from the integration's o
 Set via the **Control Mode** select entity:
 
 - **Auto** - the controller computes the current grid surplus and adjusts the boiler's heating percentage automatically
-- **Manual** - heats at a fixed wattage, set via the **Manual Power** number entity
+- **Manual** - heats at a fixed wattage, set via the **Target Power** number entity
 - **On** - heating element always at 100%
 - **Off** - heating element always off
 
@@ -59,7 +59,7 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 ## Entities created
 
 - `Control Mode` (select) - auto / manual / on / off
-- `Manual Power` (number) - target watts used in manual mode
+- `Target Power` (number) - target watts used in manual mode
 - `Max Heating Power` (select) - configurable safety ceiling, in watts (breaker presets)
 - `Minimum Heating Power` (number) - Auto-mode-only floor, in watts
 - `SSR` (switch) - the module's SSR relay state
