@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.util import dt as dt_util
 
 from custom_components.powerbaas.devices.boiler_controller.const import (
     BOILER_MODE_AUTO,
@@ -461,6 +463,71 @@ def test_apply_max_heating_watts_from_status_clamps_min_down_when_it_exceeds_new
 
     assert data["max_heating_watts"] == 1000
     assert data["min_heating_watts"] == 1000
+
+
+# ---------------------------------------------------------------------------
+# _apply_boot_time
+# ---------------------------------------------------------------------------
+
+
+def test_apply_boot_time_computes_value_when_none_stored_yet() -> None:
+    coordinator = _make_coordinator()
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt_util.UTC)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 3600}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == now - timedelta(seconds=3600)
+
+
+def test_apply_boot_time_reuses_previous_value_within_drift_tolerance() -> None:
+    previous_boot_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=dt_util.UTC)
+    coordinator = _make_coordinator()
+    coordinator.data = {**coordinator.data, "system": {"bootTime": previous_boot_time}}
+    # Polled an hour later with an uptime that, modulo a few seconds of
+    # request-latency jitter, still points back to the same boot time.
+    now = previous_boot_time + timedelta(hours=1, seconds=5)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 3600}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == previous_boot_time
+
+
+def test_apply_boot_time_recomputes_when_drift_exceeds_tolerance() -> None:
+    """A device reboot resets uptimeSeconds close to zero, which should be
+    treated as a real change rather than jitter."""
+    previous_boot_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=dt_util.UTC)
+    coordinator = _make_coordinator()
+    coordinator.data = {**coordinator.data, "system": {"bootTime": previous_boot_time}}
+    now = previous_boot_time + timedelta(hours=2)
+
+    with patch(
+        "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
+        return_value=now,
+    ):
+        system = {"uptimeSeconds": 30}
+        coordinator._apply_boot_time(system)
+
+    assert system["bootTime"] == now - timedelta(seconds=30)
+    assert system["bootTime"] != previous_boot_time
+
+
+def test_apply_boot_time_noop_when_uptime_seconds_missing() -> None:
+    coordinator = _make_coordinator()
+
+    system: dict = {}
+    coordinator._apply_boot_time(system)
+
+    assert "bootTime" not in system
 
 
 # ---------------------------------------------------------------------------

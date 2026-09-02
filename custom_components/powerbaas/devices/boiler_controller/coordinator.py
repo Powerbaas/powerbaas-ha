@@ -23,6 +23,7 @@ from .const import (
     BOILER_MODE_OFF,
     BOILER_MODE_ON,
     BOILER_MODES,
+    BOOT_TIME_DRIFT_TOLERANCE,
     CALIBRATION_POLL_SECONDS,
     CONF_DEVICE_URL,
     CONF_POLL_INTERVAL,
@@ -195,12 +196,39 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         data = dict(self.data or {})
         data["status"] = status
         if system is not None:
-            data["system"] = (system or {}).get("system") or {}
+            system_data = (system or {}).get("system") or {}
+            self._apply_boot_time(system_data)
+            data["system"] = system_data
 
         self._update_cached_brightness(status)
         self._apply_max_heating_watts_from_status(data, status)
 
         return data
+
+    def _apply_boot_time(self, system: dict[str, Any]) -> None:
+        """Derive a stable "bootTime" from the device's live uptimeSeconds.
+
+        uptimeSeconds (and upSince, its formatted-duration counterpart)
+        increases on every poll, so exposing either directly as a sensor
+        state would create a new state - and a new history/logbook entry -
+        on every single poll. Instead compute the device's boot time once
+        and keep reusing that same value across polls, only recomputing it
+        when it drifts enough to indicate an actual reboot rather than
+        normal request-latency jitter.
+        """
+        uptime_seconds = system.get("uptimeSeconds")
+        if not isinstance(uptime_seconds, (int, float)):
+            return
+
+        new_boot_time = dt_util.utcnow() - timedelta(seconds=uptime_seconds)
+        previous_boot_time = ((self.data or {}).get("system") or {}).get("bootTime")
+        if (
+            previous_boot_time is not None
+            and abs((new_boot_time - previous_boot_time).total_seconds()) < BOOT_TIME_DRIFT_TOLERANCE
+        ):
+            system["bootTime"] = previous_boot_time
+        else:
+            system["bootTime"] = new_boot_time
 
     def _register_failure(self) -> None:
         """Track a failed /api/status fetch; flip to offline after the threshold."""
