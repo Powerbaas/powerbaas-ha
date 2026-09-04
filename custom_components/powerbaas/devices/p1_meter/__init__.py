@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
 from .const import (
     BATTERY_API_PATH,
+    BATTERY_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     MIN_TIMEOUT,
     MAX_TIMEOUT,
@@ -180,7 +181,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
         _LOGGER,
         name=f"{DOMAIN}_battery",
         update_method=async_update_battery_data,
-        update_interval=timedelta(seconds=scan_interval),
+        update_interval=timedelta(seconds=BATTERY_SCAN_INTERVAL),
     )
     await battery_coordinator.async_config_entry_first_refresh()
 

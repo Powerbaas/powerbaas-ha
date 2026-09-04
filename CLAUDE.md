@@ -64,6 +64,12 @@ This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real
 setting to scale against.
 
+The P1 meter's connected-battery endpoint (`BATTERY_API_PATH`, polled by its
+own `battery_coordinator`) is deliberately *not* tied to the meter's
+`scan_interval` - it has its own fixed `BATTERY_SCAN_INTERVAL` (60s) in
+`p1_meter/const.py`, since battery state changes slowly enough that polling
+it as often as e.g. a 5s meter `scan_interval` would be pointless.
+
 Every `CoordinatorEntity` subclass must set `_attr_should_poll = False`.
 `Entity.should_poll` defaults to `True`, and `CoordinatorEntity.async_update()`
 calls `coordinator.async_request_refresh()` - so an entity that doesn't

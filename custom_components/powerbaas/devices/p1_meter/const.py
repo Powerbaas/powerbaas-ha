@@ -71,6 +71,11 @@ DIAGNOSTIC_SENSORS = [
 # battery entity/device lifecycle handling.
 BATTERY_API_PATH = "/api/battery"
 
+# Fixed - not tied to the main meter's (configurable) scan_interval. Battery
+# state changes slowly enough that once a minute is plenty, and decoupling it
+# avoids polling batteries as often as e.g. a 5s meter scan_interval would.
+BATTERY_SCAN_INTERVAL = 60
+
 # Tuple: (name, json_key, unit, device_class, state_class, icon)
 BATTERY_SENSORS = [
     ("Power", "power", "W", "power", "measurement", "mdi:flash"),

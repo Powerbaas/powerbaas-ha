@@ -10,6 +10,7 @@ needs a real event loop/hass to schedule refreshes against.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import aiohttp
@@ -24,6 +25,7 @@ from custom_components.powerbaas.devices.p1_meter import (
     migrate_legacy_entities,
 )
 from custom_components.powerbaas.devices.p1_meter.const import (
+    BATTERY_SCAN_INTERVAL,
     MAX_TIMEOUT,
     MIN_TIMEOUT,
     TIMEOUT_RATIO,
@@ -225,6 +227,23 @@ async def test_battery_coordinator_parses_valid_response(
     battery_coordinator = result["battery_coordinator"]
     assert battery_coordinator.data == [{"id": 1, "product": "Zendure", "power": 0, "soc": 60.0}]
     assert session.calls[1]["url"] == "http://p1.local/api/battery"
+
+
+async def test_battery_coordinator_polls_at_fixed_interval_not_scan_interval(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_response({"meterReading": {}})
+    session.queue_response([])
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass, scan_interval=5))
+
+    assert result["battery_coordinator"].update_interval == timedelta(seconds=BATTERY_SCAN_INTERVAL)
+    assert result["coordinator"].update_interval == timedelta(seconds=5)
 
 
 async def test_battery_coordinator_treats_failure_as_empty_without_raising(
