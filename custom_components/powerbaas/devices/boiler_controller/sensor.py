@@ -43,7 +43,7 @@ async def async_setup_entry(
         BoilerControllerStatusSensor(coordinator, config_entry),
     ]
 
-    for name, path, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in (
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix, enabled_default in (
         MAIN_SENSORS + DIAGNOSTIC_SENSORS
     ):
         sensors.append(
@@ -58,6 +58,7 @@ async def async_setup_entry(
                 entity_category=entity_category,
                 icon=icon,
                 unique_suffix=unique_suffix,
+                enabled_default=enabled_default,
             )
         )
 
@@ -181,6 +182,7 @@ class BoilerControllerFieldSensor(CoordinatorEntity, SensorEntity):
         entity_category: Optional[EntityCategory],
         icon: Optional[str],
         unique_suffix: str,
+        enabled_default: bool = True,
     ) -> None:
         super().__init__(coordinator)
         self.config_entry = config_entry
@@ -193,6 +195,7 @@ class BoilerControllerFieldSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = state_class
         self._attr_entity_category = entity_category
         self._attr_icon = icon
+        self._attr_entity_registry_enabled_default = enabled_default
 
     def _extract_value(self):
         return _read_path(self.coordinator.data, self._path)
