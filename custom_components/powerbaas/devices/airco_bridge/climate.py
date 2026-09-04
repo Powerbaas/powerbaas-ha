@@ -57,6 +57,7 @@ async def async_setup_entry(
 class AircoBridgeClimate(CoordinatorEntity, ClimateEntity):
     """Climate entity backed by the Airco Bridge IR sender + room probe."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = None
     _attr_translation_key = "airco_bridge"

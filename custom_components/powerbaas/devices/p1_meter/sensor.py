@@ -2,12 +2,20 @@ import logging
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.util import dt as dt_util
 
 from ...const import DOMAIN
-from .const import MAIN_SENSORS, DIAGNOSTIC_SENSORS, COMBINED_SENSORS
+from .const import (
+    BATTERY_SENSORS,
+    MAIN_SENSORS,
+    DIAGNOSTIC_SENSORS,
+    COMBINED_SENSORS,
+    SOLAR_SENSORS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +61,33 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
         )
 
+    solar_device_info = DeviceInfo(
+        identifiers={(DOMAIN, f"{entry.entry_id}_solar")},
+        name="Solar",
+        manufacturer="Powerbaas",
+        model="Solar",
+        via_device=(DOMAIN, entry.entry_id),
+    )
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon in SOLAR_SENSORS:
+        unique_id = f"{entry.entry_id}_{'_'.join(path).lower()}"
+        entities.append(
+            PowerBaasSensor(
+                coordinator,
+                entry.entry_id,
+                device_name,
+                name,
+                path,
+                unit,
+                device_class,
+                state_class,
+                unique_id,
+                multiplier,
+                entity_category,
+                icon,
+                device_info=solar_device_info,
+            )
+        )
+
     for name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in COMBINED_SENSORS:
         entities.append(
             PowerBaasCombinedEnergySensor(
@@ -72,12 +107,91 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
         )
 
-    async_add_entities(entities, True)
+    # No update_before_add: the coordinators' async_config_entry_first_refresh()
+    # (in __init__.py) has already populated .data by the time entities are
+    # built here. update_before_add=True would instead make every
+    # CoordinatorEntity's async_update() call coordinator.async_request_refresh()
+    # (see CoordinatorEntity.async_update()), firing a redundant extra fetch
+    # on every setup/reload for no benefit - matches boiler_controller's
+    # sensor.py, which never passes it either.
+    async_add_entities(entities)
+
+    battery_coordinator = hass.data[DOMAIN][entry.entry_id]["battery_coordinator"]
+    device_registry = dr.async_get(hass)
+    # battery_id -> {"entities": [...], "product": str} for whatever the API
+    # currently reports - diffed against on every battery_coordinator update
+    # so batteries can appear/disappear/rename without a reload.
+    known_batteries: dict[int, dict] = {}
+
+    def _battery_device_identifiers(battery_id):
+        return {(DOMAIN, f"{entry.entry_id}_battery_{battery_id}")}
+
+    async def _async_handle_battery_update() -> None:
+        data = battery_coordinator.data or []
+        current_ids = set()
+        new_entities = []
+
+        for battery in data:
+            battery_id = battery.get("id")
+            if battery_id is None:
+                continue
+            current_ids.add(battery_id)
+            product = battery.get("product")
+
+            known = known_batteries.get(battery_id)
+            if known is None:
+                battery_entities = [
+                    PowerBaasBatterySensor(
+                        battery_coordinator,
+                        entry.entry_id,
+                        battery_id,
+                        product,
+                        name,
+                        json_key,
+                        unit,
+                        device_class,
+                        state_class,
+                        icon,
+                    )
+                    for name, json_key, unit, device_class, state_class, icon in BATTERY_SENSORS
+                ]
+                known_batteries[battery_id] = {"entities": battery_entities, "product": product}
+                new_entities.extend(battery_entities)
+            elif known["product"] != product:
+                device_entry = device_registry.async_get_device(
+                    identifiers=_battery_device_identifiers(battery_id)
+                )
+                if device_entry is not None:
+                    device_registry.async_update_device(
+                        device_entry.id, name=product, manufacturer=product
+                    )
+                known["product"] = product
+
+        for battery_id in set(known_batteries) - current_ids:
+            removed = known_batteries.pop(battery_id)
+            for battery_entity in removed["entities"]:
+                await battery_entity.async_remove(force_remove=True)
+            device_entry = device_registry.async_get_device(
+                identifiers=_battery_device_identifiers(battery_id)
+            )
+            if device_entry is not None:
+                device_registry.async_remove_device(device_entry.id)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    @callback
+    def _handle_battery_update() -> None:
+        hass.async_create_task(_async_handle_battery_update())
+
+    await _async_handle_battery_update()
+    entry.async_on_unload(battery_coordinator.async_add_listener(_handle_battery_update))
 
 
 class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
     """High-level online/offline status, based on consecutive fetch failures."""
 
+    _attr_should_poll = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator, entry_id, device_name):
@@ -108,7 +222,9 @@ class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
 
 
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None, device_info=None):
         super().__init__(coordinator)
         self._attr_name = name
         self._path = path
@@ -120,6 +236,13 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = icon
         self._multiplier = multiplier
         self._last_value = None
+
+        if device_info is not None:
+            # e.g. the Solar sensors, which belong to their own "Solar"
+            # device rather than the main P1 device - see SOLAR_SENSORS'
+            # setup in async_setup_entry.
+            self._attr_device_info = device_info
+            return
 
         system_data = coordinator.data.get("system", {}) if coordinator.data else {}
 
@@ -174,6 +297,8 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
 
 class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
     """Sum of two MAIN_SENSORS energy paths, e.g. High + Low tariff totals."""
+
+    _attr_should_poll = False
 
     def __init__(self, coordinator, entry_id, device_name, name, path_a, path_b, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
         super().__init__(coordinator)
@@ -240,3 +365,47 @@ class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
                 err,
             )
             return None
+
+
+class PowerBaasBatterySensor(CoordinatorEntity, SensorEntity):
+    """One field (Power/State of Charge) of one connected battery, as its own HA device."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        coordinator,
+        entry_id,
+        battery_id,
+        product,
+        name,
+        json_key,
+        unit,
+        device_class,
+        state_class,
+        icon,
+    ):
+        super().__init__(coordinator)
+        self._battery_id = battery_id
+        self._json_key = json_key
+        self._attr_name = name
+        self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = device_class
+        self._attr_state_class = state_class
+        self._attr_icon = icon
+        self._attr_unique_id = f"{entry_id}_battery_{battery_id}_{json_key}"
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_battery_{battery_id}")},
+            name=product,
+            manufacturer=product,
+            model="Battery",
+            via_device=(DOMAIN, entry_id),
+        )
+
+    @property
+    def native_value(self):
+        for battery in self.coordinator.data or []:
+            if battery.get("id") == self._battery_id:
+                return battery.get(self._json_key)
+        return None

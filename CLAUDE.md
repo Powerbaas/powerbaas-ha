@@ -64,6 +64,28 @@ This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real
 setting to scale against.
 
+The P1 meter's connected-battery endpoint (`BATTERY_API_PATH`, polled by its
+own `battery_coordinator`) is deliberately *not* tied to the meter's
+`scan_interval` - it has its own fixed `BATTERY_SCAN_INTERVAL` (60s) in
+`p1_meter/const.py`, since battery state changes slowly enough that polling
+it as often as e.g. a 5s meter `scan_interval` would be pointless.
+
+Every `CoordinatorEntity` subclass must set `_attr_should_poll = False`.
+`Entity.should_poll` defaults to `True`, and `CoordinatorEntity.async_update()`
+calls `coordinator.async_request_refresh()` - so an entity that doesn't
+override it gets polled a *second*, redundant time on Home Assistant's
+default entity scan interval, on top of the coordinator's own
+`update_interval`, and (if a platform's `async_add_entities(entities, True)`
+passes `update_before_add=True`) fires one extra fetch on every setup/reload
+too, since `Entity.async_device_update()` ignores `should_poll` and always
+calls `async_update()` when `update_before_add=True`. Boiler Controller has
+always set this; P1 meter, Airco Bridge and RGB were missing it on every
+`CoordinatorEntity` subclass until it was added repo-wide - keep it on any
+new coordinator-backed entity class, and prefer `async_add_entities(entities)`
+(no `update_before_add`) for coordinator entities generally, since the
+coordinator's `async_config_entry_first_refresh()` already guarantees
+`coordinator.data` is populated before entities are built.
+
 ### Device offline / unreachable handling (required for every device type)
 
 Every device type must handle the device being unreachable, both at setup

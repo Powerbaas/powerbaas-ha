@@ -51,6 +51,7 @@ class RgbLight(CoordinatorEntity, LightEntity):
     and brightness always work.
     """
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = None
     _attr_supported_color_modes = {ColorMode.RGB}

@@ -20,6 +20,7 @@ _SENSOR_TABLES = [
     ("p1_meter.MAIN_SENSORS", p1_const.MAIN_SENSORS, 2, 7),
     ("p1_meter.DIAGNOSTIC_SENSORS", p1_const.DIAGNOSTIC_SENSORS, 2, 7),
     ("p1_meter.COMBINED_SENSORS", p1_const.COMBINED_SENSORS, 3, 8),
+    ("p1_meter.BATTERY_SENSORS", p1_const.BATTERY_SENSORS, 2, 5),
     ("airco_bridge.MAIN_SENSORS", airco_const.MAIN_SENSORS, 2, 7),
     ("airco_bridge.DIAGNOSTIC_SENSORS", airco_const.DIAGNOSTIC_SENSORS, 2, 7),
     ("rgb.MAIN_SENSORS", rgb_const.MAIN_SENSORS, 2, 7),

@@ -5,8 +5,9 @@ Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monit
 ## Features
 
 - **Energy meter data**: power usage, delivered/returned energy (high/low tariff), gas consumption, per-phase voltage and current
-- **Solar production**: current output and total production
+- **Solar production**: current output and total production, shown on their own "Solar" device
 - **Dynamic tariffs**: usage and return price per kWh
+- **Connected batteries**: each battery reported by the meter (e.g. a Zendure) shows up as its own device, with `Power` and `State of Charge` sensors
 - **Device page**: all sensors are grouped under a single Powerbaas device, with a separate "Diagnostics" section for WiFi strength, firmware version, uptime and last update
 
 ## Configuration
@@ -38,8 +39,6 @@ Your entity IDs, history, statistics, automations and dashboards are **not** aff
 - `Voltage L1/L2/L3` - Voltage per phase (V)
 - `Current L1/L2/L3` - Current per phase (A)
 - `Power Usage L1/L2/L3` - Power usage per phase (W)
-- `Solar Current Power` - Current solar power production (W)
-- `Solar Total Production` - Total solar energy produced (kWh)
 - `Dynamic Tariff - Usage` / `Dynamic Tariff - Return` - Dynamic energy prices (ct/kWh)
 
 ### Diagnostic sensors
@@ -47,3 +46,28 @@ Your entity IDs, history, statistics, automations and dashboards are **not** aff
 - `Powerbaas Firmware Version` - Firmware version
 - `Powerbaas Uptime` - Device boot time (timestamp)
 - `Powerbaas IP Address` - Device's current IP address
+
+## Solar
+
+Solar production is shown on its own "Solar" device, connected via the P1
+meter device:
+
+- `Solar Current Power` - Current solar power production (W)
+- `Solar Total Production` - Total solar energy produced (kWh)
+
+## Connected batteries
+
+If the meter's `/api/battery` endpoint reports any connected batteries, each
+one gets its own device (named after the battery's `product`, e.g.
+"Zendure"), shown as "connected via" the P1 meter device:
+
+- `Power` - Current charge/discharge power (W, negative while discharging)
+- `State of Charge` - Battery charge level (%)
+
+A battery's device name updates automatically if the meter starts reporting
+a more specific product name later. If a battery is unpaired, its device and
+sensors are removed the next time the meter successfully reports the shorter
+list; new batteries appear automatically too, no reload needed.
+
+Firmware without this endpoint simply doesn't get any battery devices - it
+has no effect on the rest of the P1 meter's sensors or offline detection.
