@@ -55,3 +55,15 @@ DIAGNOSTIC_SENSORS = [
     ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock"),
     ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network"),
 ]
+
+# Connected batteries (e.g. Zendure), polled from a separate endpoint and
+# surfaced as their own HA devices rather than entities on the P1 meter
+# device - see p1_meter/__init__.py's battery_coordinator and sensor.py's
+# battery entity/device lifecycle handling.
+BATTERY_API_PATH = "/api/battery"
+
+# Tuple: (name, json_key, unit, device_class, state_class, icon)
+BATTERY_SENSORS = [
+    ("Power", "power", "W", "power", "measurement", "mdi:flash"),
+    ("State of Charge", "soc", "%", "battery", "measurement", None),
+]

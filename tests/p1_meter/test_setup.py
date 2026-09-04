@@ -205,6 +205,84 @@ async def test_coordinator_recovers_after_successful_fetch(
 
 
 # ---------------------------------------------------------------------------
+# battery_coordinator - see p1_meter/const.py's BATTERY_API_PATH
+# ---------------------------------------------------------------------------
+
+
+async def test_battery_coordinator_parses_valid_response(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_response({"meterReading": {}})
+    session.queue_response([{"id": 1, "product": "Zendure", "power": 0, "soc": 60.0}])
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+
+    battery_coordinator = result["battery_coordinator"]
+    assert battery_coordinator.data == [{"id": 1, "product": "Zendure", "power": 0, "soc": 60.0}]
+    assert session.calls[1]["url"] == "http://p1.local/api/battery"
+
+
+async def test_battery_coordinator_treats_failure_as_empty_without_raising(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_response({"meterReading": {}})
+    session.queue_exception(aiohttp.ClientError("boom"))
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+
+    assert result["battery_coordinator"].data == []
+    # The battery endpoint failing must not affect the main coordinator/offline state.
+    assert result["coordinator"].device_online is True
+
+
+async def test_battery_coordinator_treats_non_list_response_as_empty(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_response({"meterReading": {}})
+    session.queue_response({"error": "not found"})
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+
+    assert result["battery_coordinator"].data == []
+
+
+async def test_battery_coordinator_keeps_previous_data_on_later_failure(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _FakeSession()
+    session.queue_response({"meterReading": {}})
+    session.queue_response([{"id": 1, "product": "Zendure", "power": 10, "soc": 50.0}])
+    monkeypatch.setattr(
+        "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
+        lambda _hass: session,
+    )
+
+    result = await _call_async_setup_entry(hass, _make_entry(hass))
+    battery_coordinator = result["battery_coordinator"]
+    assert len(battery_coordinator.data) == 1
+
+    session.queue_exception(aiohttp.ClientError("boom"))
+    await battery_coordinator.async_refresh()
+
+    assert battery_coordinator.data == [{"id": 1, "product": "Zendure", "power": 10, "soc": 50.0}]
+
+
+# ---------------------------------------------------------------------------
 # migrate_legacy_entities
 # ---------------------------------------------------------------------------
 

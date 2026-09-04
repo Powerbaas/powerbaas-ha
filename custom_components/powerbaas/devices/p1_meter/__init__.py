@@ -13,7 +13,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
-from .const import DEFAULT_SCAN_INTERVAL, MIN_TIMEOUT, MAX_TIMEOUT, TIMEOUT_RATIO
+from .const import (
+    BATTERY_API_PATH,
+    DEFAULT_SCAN_INTERVAL,
+    MIN_TIMEOUT,
+    MAX_TIMEOUT,
+    TIMEOUT_RATIO,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,8 +149,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     except Exception as err:
         raise ConfigEntryNotReady from err
 
+    battery_url = f"{api_url}{BATTERY_API_PATH}"
+
+    async def async_update_battery_data():
+        # Best-effort: many P1 meters run firmware without this endpoint
+        # (404/connection error). Unlike the main coordinator, a failure here
+        # must never raise - it would otherwise fail setup or flip battery
+        # entities unavailable for every install that simply doesn't have
+        # batteries. Falling back to the previous data (or [] if there is
+        # none yet) also means a *successful* fetch is the only way the
+        # battery list can shrink, which sensor.py relies on to tell "device
+        # removed" apart from "fetch failed".
+        session = async_get_clientsession(hass)
+        try:
+            async with session.get(battery_url, timeout=aiohttp.ClientTimeout(total=request_timeout)) as response:
+                response.raise_for_status()
+                data = await response.json()
+        except (asyncio.TimeoutError, aiohttp.ClientError) as err:
+            _LOGGER.debug("Battery endpoint unreachable at %s: %s", battery_url, err)
+            return battery_coordinator.data if battery_coordinator.data is not None else []
+
+        if not isinstance(data, list):
+            _LOGGER.debug("Unexpected battery response from %s: %r", battery_url, data)
+            return battery_coordinator.data if battery_coordinator.data is not None else []
+
+        return data
+
+    battery_coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name=f"{DOMAIN}_battery",
+        update_method=async_update_battery_data,
+        update_interval=timedelta(seconds=scan_interval),
+    )
+    await battery_coordinator.async_config_entry_first_refresh()
+
     return {
         "coordinator": coordinator,
+        "battery_coordinator": battery_coordinator,
         "host": api_url,
         "name": device_name,
     }

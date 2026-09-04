@@ -2,12 +2,14 @@ import logging
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.util import dt as dt_util
 
 from ...const import DOMAIN
-from .const import MAIN_SENSORS, DIAGNOSTIC_SENSORS, COMBINED_SENSORS
+from .const import BATTERY_SENSORS, MAIN_SENSORS, DIAGNOSTIC_SENSORS, COMBINED_SENSORS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +75,77 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
 
     async_add_entities(entities, True)
+
+    battery_coordinator = hass.data[DOMAIN][entry.entry_id]["battery_coordinator"]
+    device_registry = dr.async_get(hass)
+    # battery_id -> {"entities": [...], "product": str} for whatever the API
+    # currently reports - diffed against on every battery_coordinator update
+    # so batteries can appear/disappear/rename without a reload.
+    known_batteries: dict[int, dict] = {}
+
+    def _battery_device_identifiers(battery_id):
+        return {(DOMAIN, f"{entry.entry_id}_battery_{battery_id}")}
+
+    async def _async_handle_battery_update() -> None:
+        data = battery_coordinator.data or []
+        current_ids = set()
+        new_entities = []
+
+        for battery in data:
+            battery_id = battery.get("id")
+            if battery_id is None:
+                continue
+            current_ids.add(battery_id)
+            product = battery.get("product")
+
+            known = known_batteries.get(battery_id)
+            if known is None:
+                battery_entities = [
+                    PowerBaasBatterySensor(
+                        battery_coordinator,
+                        entry.entry_id,
+                        battery_id,
+                        product,
+                        name,
+                        json_key,
+                        unit,
+                        device_class,
+                        state_class,
+                        icon,
+                    )
+                    for name, json_key, unit, device_class, state_class, icon in BATTERY_SENSORS
+                ]
+                known_batteries[battery_id] = {"entities": battery_entities, "product": product}
+                new_entities.extend(battery_entities)
+            elif known["product"] != product:
+                device_entry = device_registry.async_get_device(
+                    identifiers=_battery_device_identifiers(battery_id)
+                )
+                if device_entry is not None:
+                    device_registry.async_update_device(
+                        device_entry.id, name=product, manufacturer=product
+                    )
+                known["product"] = product
+
+        for battery_id in set(known_batteries) - current_ids:
+            removed = known_batteries.pop(battery_id)
+            for battery_entity in removed["entities"]:
+                await battery_entity.async_remove(force_remove=True)
+            device_entry = device_registry.async_get_device(
+                identifiers=_battery_device_identifiers(battery_id)
+            )
+            if device_entry is not None:
+                device_registry.async_remove_device(device_entry.id)
+
+        if new_entities:
+            async_add_entities(new_entities, True)
+
+    @callback
+    def _handle_battery_update() -> None:
+        hass.async_create_task(_async_handle_battery_update())
+
+    await _async_handle_battery_update()
+    entry.async_on_unload(battery_coordinator.async_add_listener(_handle_battery_update))
 
 
 class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
@@ -240,3 +313,45 @@ class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
                 err,
             )
             return None
+
+
+class PowerBaasBatterySensor(CoordinatorEntity, SensorEntity):
+    """One field (Power/State of Charge) of one connected battery, as its own HA device."""
+
+    def __init__(
+        self,
+        coordinator,
+        entry_id,
+        battery_id,
+        product,
+        name,
+        json_key,
+        unit,
+        device_class,
+        state_class,
+        icon,
+    ):
+        super().__init__(coordinator)
+        self._battery_id = battery_id
+        self._json_key = json_key
+        self._attr_name = name
+        self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = device_class
+        self._attr_state_class = state_class
+        self._attr_icon = icon
+        self._attr_unique_id = f"{entry_id}_battery_{battery_id}_{json_key}"
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry_id}_battery_{battery_id}")},
+            name=product,
+            manufacturer=product,
+            model="Battery",
+            via_device=(DOMAIN, entry_id),
+        )
+
+    @property
+    def native_value(self):
+        for battery in self.coordinator.data or []:
+            if battery.get("id") == self._battery_id:
+                return battery.get(self._json_key)
+        return None
