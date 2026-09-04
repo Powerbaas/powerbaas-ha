@@ -18,8 +18,8 @@ def _field_sensor(
     coordinator = SimpleNamespace(data={"status": status, "system": {}}, device_online=online)
     entry = MagicMock()
     entry.entry_id = "bc_entry"
-    field = next(f for f in MAIN_SENSORS if f[-1] == unique_suffix)
-    name, path, unit, device_class, state_class, multiplier, entity_category, icon, suffix = field
+    field = next(f for f in MAIN_SENSORS if f[-2] == unique_suffix)
+    name, path, unit, device_class, state_class, multiplier, entity_category, icon, suffix, enabled_default = field
     sensor = object.__new__(BoilerControllerFieldSensor)
     sensor.coordinator = coordinator
     sensor.config_entry = entry
@@ -32,6 +32,7 @@ def _field_sensor(
     sensor._attr_state_class = state_class
     sensor._attr_entity_category = entity_category
     sensor._attr_icon = icon
+    sensor._attr_entity_registry_enabled_default = enabled_default
     return sensor
 
 
