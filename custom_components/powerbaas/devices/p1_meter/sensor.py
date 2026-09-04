@@ -64,6 +64,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     solar_device_info = DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_solar")},
         name="Solar",
+        manufacturer="Powerbaas",
+        model="Solar",
         via_device=(DOMAIN, entry.entry_id),
     )
     for name, path, unit, device_class, state_class, multiplier, entity_category, icon in SOLAR_SENSORS:

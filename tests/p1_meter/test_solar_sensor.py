@@ -114,6 +114,10 @@ async def test_solar_sensors_live_on_their_own_device(
     assert solar_device is not None
     assert solar_device.id != main_device.id
     assert solar_device.name == "Solar"
+    # A device without `model` shows a bare "N entities" subtitle in the
+    # Devices list, instead of "<model> - N entities" like every other
+    # Powerbaas device - regression check for that.
+    assert solar_device.model == "Solar"
     assert solar_device.via_device_id == main_device.id
 
     entity_registry = er.async_get(hass)
