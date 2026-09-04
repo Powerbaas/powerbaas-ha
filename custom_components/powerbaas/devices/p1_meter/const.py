@@ -32,10 +32,19 @@ MAIN_SENSORS = [
     ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1, None, None),
     ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1, None, None),
-    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
-    ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None),
     ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1, None, None),
     ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1, None, None),
+]
+
+# Solar sensors - same tuple shape as MAIN_SENSORS (same PowerBaasSensor
+# class), but surfaced on their own "Solar" device rather than the main P1
+# device - see sensor.py's async_setup_entry, which overrides device_info
+# for these specifically. Unique_ids are unchanged from when these lived in
+# MAIN_SENSORS, so existing installs just get their Solar entities
+# re-parented to the new device on next reload, no migration needed.
+SOLAR_SENSORS = [
+    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
+    ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None),
 ]
 
 # Combined High+Low energy totals - summed from two MAIN_SENSORS paths, so

@@ -9,7 +9,13 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.util import dt as dt_util
 
 from ...const import DOMAIN
-from .const import BATTERY_SENSORS, MAIN_SENSORS, DIAGNOSTIC_SENSORS, COMBINED_SENSORS
+from .const import (
+    BATTERY_SENSORS,
+    MAIN_SENSORS,
+    DIAGNOSTIC_SENSORS,
+    COMBINED_SENSORS,
+    SOLAR_SENSORS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +61,31 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
         )
 
+    solar_device_info = DeviceInfo(
+        identifiers={(DOMAIN, f"{entry.entry_id}_solar")},
+        name="Solar",
+        via_device=(DOMAIN, entry.entry_id),
+    )
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon in SOLAR_SENSORS:
+        unique_id = f"{entry.entry_id}_{'_'.join(path).lower()}"
+        entities.append(
+            PowerBaasSensor(
+                coordinator,
+                entry.entry_id,
+                device_name,
+                name,
+                path,
+                unit,
+                device_class,
+                state_class,
+                unique_id,
+                multiplier,
+                entity_category,
+                icon,
+                device_info=solar_device_info,
+            )
+        )
+
     for name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in COMBINED_SENSORS:
         entities.append(
             PowerBaasCombinedEnergySensor(
@@ -74,7 +105,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
         )
 
-    async_add_entities(entities, True)
+    # No update_before_add: the coordinators' async_config_entry_first_refresh()
+    # (in __init__.py) has already populated .data by the time entities are
+    # built here. update_before_add=True would instead make every
+    # CoordinatorEntity's async_update() call coordinator.async_request_refresh()
+    # (see CoordinatorEntity.async_update()), firing a redundant extra fetch
+    # on every setup/reload for no benefit - matches boiler_controller's
+    # sensor.py, which never passes it either.
+    async_add_entities(entities)
 
     battery_coordinator = hass.data[DOMAIN][entry.entry_id]["battery_coordinator"]
     device_registry = dr.async_get(hass)
@@ -138,7 +176,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 device_registry.async_remove_device(device_entry.id)
 
         if new_entities:
-            async_add_entities(new_entities, True)
+            async_add_entities(new_entities)
 
     @callback
     def _handle_battery_update() -> None:
@@ -151,6 +189,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
     """High-level online/offline status, based on consecutive fetch failures."""
 
+    _attr_should_poll = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator, entry_id, device_name):
@@ -181,7 +220,9 @@ class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
 
 
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None, device_info=None):
         super().__init__(coordinator)
         self._attr_name = name
         self._path = path
@@ -193,6 +234,13 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = icon
         self._multiplier = multiplier
         self._last_value = None
+
+        if device_info is not None:
+            # e.g. the Solar sensors, which belong to their own "Solar"
+            # device rather than the main P1 device - see SOLAR_SENSORS'
+            # setup in async_setup_entry.
+            self._attr_device_info = device_info
+            return
 
         system_data = coordinator.data.get("system", {}) if coordinator.data else {}
 
@@ -247,6 +295,8 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
 
 class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
     """Sum of two MAIN_SENSORS energy paths, e.g. High + Low tariff totals."""
+
+    _attr_should_poll = False
 
     def __init__(self, coordinator, entry_id, device_name, name, path_a, path_b, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
         super().__init__(coordinator)
@@ -317,6 +367,8 @@ class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
 
 class PowerBaasBatterySensor(CoordinatorEntity, SensorEntity):
     """One field (Power/State of Charge) of one connected battery, as its own HA device."""
+
+    _attr_should_poll = False
 
     def __init__(
         self,
