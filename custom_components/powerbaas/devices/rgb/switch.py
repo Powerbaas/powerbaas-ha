@@ -36,6 +36,7 @@ async def async_setup_entry(
 class RgbColorBlindSwitch(CoordinatorEntity, SwitchEntity):
     """Toggle the ring's color-blind palette (used in meter-follow modes)."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = "Color Blind"
     _attr_icon = "mdi:eye-outline"

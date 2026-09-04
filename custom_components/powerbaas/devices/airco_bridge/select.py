@@ -57,6 +57,7 @@ async def async_setup_entry(
 class AircoBridgeProtocolSelect(CoordinatorEntity, SelectEntity):
     """Pick the IR protocol the bridge uses when sending commands."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = "Protocol"
     _attr_icon = "mdi:infrared"

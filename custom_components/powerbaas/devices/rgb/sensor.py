@@ -63,6 +63,7 @@ async def async_setup_entry(
 class RgbStatusSensor(CoordinatorEntity, SensorEntity):
     """High-level online/offline status, based on consecutive fetch failures."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = "Status"
     _attr_icon = "mdi:list-status"
@@ -85,6 +86,7 @@ class RgbStatusSensor(CoordinatorEntity, SensorEntity):
 class RgbFieldSensor(CoordinatorEntity, SensorEntity):
     """Generic sensor for a single field from coordinator data."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
 
     def __init__(

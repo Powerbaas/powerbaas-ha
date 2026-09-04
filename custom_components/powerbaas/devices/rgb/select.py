@@ -37,6 +37,7 @@ async def async_setup_entry(
 class RgbModeSelect(CoordinatorEntity, SelectEntity):
     """Pick Powerbaas, HomeWizard or Standalone application mode."""
 
+    _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_name = "Application Mode"
     _attr_icon = "mdi:tune"
