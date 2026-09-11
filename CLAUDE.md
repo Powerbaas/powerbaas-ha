@@ -41,7 +41,7 @@ in the version number even without an accompanying user-facing feature.
 
 ### Poll/scan interval configurability
 
-P1 meter's `scan_interval` is a real, user-configurable setting (5-60s,
+P1 meter's `scan_interval` is a real, user-configurable setting (2-60s,
 `SCAN_INTERVAL_SCHEMA` in `p1_meter/config_flow.py`) exposed in both the
 initial config flow and the options flow.
 

@@ -19,6 +19,13 @@ Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monit
 
 If your device's IP address changes later, go to the integration's options to update the host without removing and re-adding it.
 
+Most sensors below are created but **disabled by default** to keep
+recorder/history load down, especially at short update intervals - only
+`Power Usage`, `Gas Consumption`, `Energy Delivered`, `Energy Returned`,
+`Status`, `Powerbaas Uptime` and `Powerbaas IP Address` are enabled out of
+the box. Enable any of the others from the entity's page (gear icon →
+enable) if you need them.
+
 ## Offline detection
 
 If 5 consecutive data fetches fail, the device is considered offline: all sensors show as `unavailable` instead of silently keeping their last known value, and a repair issue appears under Settings → System → Repairs. It clears itself automatically once the device responds again. If the device is unreachable when Home Assistant sets up (or reloads) the integration, setup fails with "Failed setup, will retry" on the Integrations page and retries automatically with backoff.
@@ -33,24 +40,26 @@ Your entity IDs, history, statistics, automations and dashboards are **not** aff
 
 ### Main sensors
 - `Power Usage` - Current power usage (W)
-- `Energy Delivered High` / `Energy Delivered Low` - Energy delivered to the home (kWh)
-- `Energy Returned High` / `Energy Returned Low` - Energy returned to the grid (kWh)
+- `Energy Delivered` - Total energy delivered to the home, high + low tariff combined (kWh)
+- `Energy Returned` - Total energy returned to the grid, high + low tariff combined (kWh)
 - `Gas Consumption` - Gas usage (m³)
-- `Voltage L1/L2/L3` - Voltage per phase (V)
-- `Current L1/L2/L3` - Current per phase (A)
-- `Power Usage L1/L2/L3` - Power usage per phase (W)
-- `Dynamic Tariff - Usage` / `Dynamic Tariff - Return` - Dynamic energy prices (ct/kWh)
+- `Energy Delivered High` / `Energy Delivered Low` - Energy delivered to the home, split by tariff (kWh) *(disabled by default)*
+- `Energy Returned High` / `Energy Returned Low` - Energy returned to the grid, split by tariff (kWh) *(disabled by default)*
+- `Voltage L1/L2/L3` - Voltage per phase (V) *(disabled by default)*
+- `Current L1/L2/L3` - Current per phase (A) *(disabled by default)*
+- `Power Usage L1/L2/L3` - Power usage per phase (W) *(disabled by default)*
+- `Dynamic Tariff - Usage` / `Dynamic Tariff - Return` - Dynamic energy prices (ct/kWh) *(disabled by default)*
 
 ### Diagnostic sensors
-- `Powerbaas WiFi Strength` - WiFi signal strength (dBm)
-- `Powerbaas Firmware Version` - Firmware version
+- `Powerbaas WiFi Strength` - WiFi signal strength (dBm) *(disabled by default)*
+- `Powerbaas Firmware Version` - Firmware version *(disabled by default)*
 - `Powerbaas Uptime` - Device boot time (timestamp)
 - `Powerbaas IP Address` - Device's current IP address
 
 ## Solar
 
 Solar production is shown on its own "Solar" device, connected via the P1
-meter device:
+meter device. Both sensors are disabled by default:
 
 - `Solar Current Power` - Current solar power production (W)
 - `Solar Total Production` - Total solar energy produced (kWh)

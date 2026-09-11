@@ -21,12 +21,12 @@ from custom_components.powerbaas.devices.p1_meter.config_flow import (
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("value", [5, 15, 60, "30"])
+@pytest.mark.parametrize("value", [2, 15, 60, "30"])
 def test_scan_interval_schema_accepts_in_range_values(value) -> None:
     SCAN_INTERVAL_SCHEMA(value)  # must not raise
 
 
-@pytest.mark.parametrize("value", [4, 61, -1, "not-a-number"])
+@pytest.mark.parametrize("value", [1, 61, -1, "not-a-number"])
 def test_scan_interval_schema_rejects_out_of_range_or_uncoercible(value) -> None:
     with pytest.raises(vol.Invalid):
         SCAN_INTERVAL_SCHEMA(value)
