@@ -64,14 +64,16 @@ COMBINED_SENSORS = [
      "kWh", "energy", "total_increasing", 1000, None, None, "energy_returned", True),
 ]
 
-# Diagnostic sensors - device and system information. Disabled by default
-# (same recorder/history-load reason as most of MAIN_SENSORS above) - opt-in
-# via the entity registry.
+# Diagnostic sensors - device and system information. WiFi Strength and
+# Firmware Version are disabled by default (same recorder/history-load
+# reason as most of MAIN_SENSORS above) - opt-in via the entity registry.
+# Uptime and IP Address stay enabled - they change rarely, so the ongoing
+# recorder cost is negligible.
 DIAGNOSTIC_SENSORS = [
     ("Powerbaas WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", False),
     ("Powerbaas Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip", False),
-    ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", False),
-    ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", False),
+    ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", True),
+    ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", True),
 ]
 
 # Connected batteries (e.g. Zendure), polled from a separate endpoint and

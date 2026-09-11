@@ -21,9 +21,10 @@ If your device's IP address changes later, go to the integration's options to up
 
 Most sensors below are created but **disabled by default** to keep
 recorder/history load down, especially at short update intervals - only
-`Power Usage`, `Gas Consumption`, `Energy Delivered`, `Energy Returned` and
-`Status` are enabled out of the box. Enable any of the others from the
-entity's page (gear icon → enable) if you need them.
+`Power Usage`, `Gas Consumption`, `Energy Delivered`, `Energy Returned`,
+`Status`, `Powerbaas Uptime` and `Powerbaas IP Address` are enabled out of
+the box. Enable any of the others from the entity's page (gear icon →
+enable) if you need them.
 
 ## Offline detection
 
@@ -50,11 +51,8 @@ Your entity IDs, history, statistics, automations and dashboards are **not** aff
 - `Dynamic Tariff - Usage` / `Dynamic Tariff - Return` - Dynamic energy prices (ct/kWh) *(disabled by default)*
 
 ### Diagnostic sensors
-
-All disabled by default:
-
-- `Powerbaas WiFi Strength` - WiFi signal strength (dBm)
-- `Powerbaas Firmware Version` - Firmware version
+- `Powerbaas WiFi Strength` - WiFi signal strength (dBm) *(disabled by default)*
+- `Powerbaas Firmware Version` - Firmware version *(disabled by default)*
 - `Powerbaas Uptime` - Device boot time (timestamp)
 - `Powerbaas IP Address` - Device's current IP address
 
