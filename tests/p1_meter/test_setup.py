@@ -108,6 +108,7 @@ async def _call_async_setup_entry(hass, entry):
 @pytest.mark.parametrize(
     ("scan_interval", "expected_timeout"),
     [
+        (2, MIN_TIMEOUT),  # 2 * 0.6 = 1.2, clamps to MIN_TIMEOUT (3)
         (5, MIN_TIMEOUT),  # 5 * 0.6 = 3.0, clamps to MIN_TIMEOUT (3)
         (60, MAX_TIMEOUT),  # 60 * 0.6 = 36, clamps to MAX_TIMEOUT (10)
         (15, 15 * TIMEOUT_RATIO),  # 9.0, within range untouched

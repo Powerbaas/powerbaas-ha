@@ -1,7 +1,7 @@
 from homeassistant.helpers.entity import EntityCategory
 
 DEFAULT_SCAN_INTERVAL = 15
-MIN_SCAN_INTERVAL = 5
+MIN_SCAN_INTERVAL = 2
 MAX_SCAN_INTERVAL = 60
 
 # HTTP request timeout scales with scan_interval so a slow/hung request can't

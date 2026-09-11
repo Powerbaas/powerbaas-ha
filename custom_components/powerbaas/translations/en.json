@@ -18,7 +18,7 @@
         "data": {
           "host": "Host URL",
           "name": "Name",
-          "scan_interval": "Update interval (seconds, 5-60)"
+          "scan_interval": "Update interval (seconds, 2-60)"
         }
       },
       "boiler_controller": {
@@ -113,7 +113,7 @@
         "description": "Update the host URL for your Powerbaas device",
         "data": {
           "host": "Host URL",
-          "scan_interval": "Update interval (seconds, 5-60)"
+          "scan_interval": "Update interval (seconds, 2-60)"
         }
       },
       "device_config": {
