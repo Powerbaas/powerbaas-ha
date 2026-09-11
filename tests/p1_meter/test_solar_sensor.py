@@ -61,39 +61,37 @@ async def test_solar_sensors_live_on_their_own_device(
     hass, enable_custom_integrations, monkeypatch
 ) -> None:
     session = _FakeSession()
-    session.queue_response(
-        {
-            # Every MAIN_SENSORS/DIAGNOSTIC_SENSORS path populated - a
-            # partial body would make those (unrelated) sensors raise while
-            # HA writes their initial state, which isn't what this test is
-            # about.
-            "meterReading": {
-                "powerUsage": 123,
-                "powerDeliverHigh": 100,
-                "powerDeliverLow": 100,
-                "powerReturnHigh": 10,
-                "powerReturnLow": 10,
-                "gas": 50,
-                "voltageL1": 230,
-                "voltageL2": 230,
-                "voltageL3": 230,
-                "currentL1": 1,
-                "currentL2": 1,
-                "currentL3": 1,
-                "powerUsageL1": 41,
-                "powerUsageL2": 41,
-                "powerUsageL3": 41,
-            },
-            "solarReading": {"current": 456, "total": 789000},
-            "dynamicPrices": {"usage": 25, "return": 10},
-            "system": {
-                "wifiStrength": -60,
-                "firmwareVersion": "1.0.0",
-                "upSince": "2026-01-01 00:00:00",
-                "ip": "192.168.1.100",
-            },
-        }
-    )
+    # Every MAIN_SENSORS/DIAGNOSTIC_SENSORS path populated - a partial body
+    # would make those (unrelated) sensors raise while HA writes their
+    # initial state, which isn't what this test is about.
+    meter_response = {
+        "meterReading": {
+            "powerUsage": 123,
+            "powerDeliverHigh": 100,
+            "powerDeliverLow": 100,
+            "powerReturnHigh": 10,
+            "powerReturnLow": 10,
+            "gas": 50,
+            "voltageL1": 230,
+            "voltageL2": 230,
+            "voltageL3": 230,
+            "currentL1": 1,
+            "currentL2": 1,
+            "currentL3": 1,
+            "powerUsageL1": 41,
+            "powerUsageL2": 41,
+            "powerUsageL3": 41,
+        },
+        "solarReading": {"current": 456, "total": 789000},
+        "dynamicPrices": {"usage": 25, "return": 10},
+        "system": {
+            "wifiStrength": -60,
+            "firmwareVersion": "1.0.0",
+            "upSince": "2026-01-01 00:00:00",
+            "ip": "192.168.1.100",
+        },
+    }
+    session.queue_response(meter_response)
     session.queue_response([])  # /api/battery - no batteries
     monkeypatch.setattr(
         "custom_components.powerbaas.devices.p1_meter.async_get_clientsession",
@@ -131,5 +129,14 @@ async def test_solar_sensors_live_on_their_own_device(
     assert total_entity_id is not None
     assert entity_registry.entities[power_entity_id].device_id == solar_device.id
     assert entity_registry.entities[total_entity_id].device_id == solar_device.id
+
+    # Solar sensors are disabled by default (see MAIN_SENSORS/SOLAR_SENSORS'
+    # enabled_by_default in const.py) - enable it like a user would, then
+    # reload, to check it actually reports a live value.
+    entity_registry.async_update_entity(power_entity_id, disabled_by=None)
+    session.queue_response(meter_response)
+    session.queue_response([])  # /api/battery - no batteries
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
 
     assert hass.states.get(power_entity_id).state == "456.0"

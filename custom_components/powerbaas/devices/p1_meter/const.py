@@ -15,25 +15,29 @@ MAX_TIMEOUT = 10
 P1_MDNS_HOSTNAME = "powerbaas"
 
 # Main reading sensors - primary energy data
-# Tuple: (name, path, unit, device_class, state_class, multiplier, entity_category, icon)
+# Tuple: (name, path, unit, device_class, state_class, multiplier, entity_category, icon, enabled_by_default)
+# Only Power Usage and Gas Consumption default to enabled - the rest (per-phase
+# breakdowns, High/Low splits, dynamic tariff) are opt-in via the entity
+# registry to keep recorder/history load down at short scan_intervals; see
+# MIN_SCAN_INTERVAL above. Users can still enable any of these manually.
 MAIN_SENSORS = [
-    ("Power Usage", ["meterReading", "powerUsage"], "W", "power", "measurement", 1, None, None),
-    ("Energy Delivered High", ["meterReading", "powerDeliverHigh"], "kWh", "energy", "total_increasing", 1000, None, None),
-    ("Energy Delivered Low", ["meterReading", "powerDeliverLow"], "kWh", "energy", "total_increasing", 1000, None, None),
-    ("Energy Returned High", ["meterReading", "powerReturnHigh"], "kWh", "energy", "total_increasing", 1000, None, None),
-    ("Energy Returned Low", ["meterReading", "powerReturnLow"], "kWh", "energy", "total_increasing", 1000, None, None),
-    ("Gas Consumption", ["meterReading", "gas"], "m³", "gas", "total_increasing", 1000, None, None),
-    ("Voltage L1", ["meterReading", "voltageL1"], "V", "voltage", "measurement", 1, None, None),
-    ("Voltage L2", ["meterReading", "voltageL2"], "V", "voltage", "measurement", 1, None, None),
-    ("Voltage L3", ["meterReading", "voltageL3"], "V", "voltage", "measurement", 1, None, None),
-    ("Current L1", ["meterReading", "currentL1"], "A", "current", "measurement", 1, None, None),
-    ("Current L2", ["meterReading", "currentL2"], "A", "current", "measurement", 1, None, None),
-    ("Current L3", ["meterReading", "currentL3"], "A", "current", "measurement", 1, None, None),
-    ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1, None, None),
-    ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1, None, None),
-    ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1, None, None),
-    ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1, None, None),
-    ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1, None, None),
+    ("Power Usage", ["meterReading", "powerUsage"], "W", "power", "measurement", 1, None, None, True),
+    ("Energy Delivered High", ["meterReading", "powerDeliverHigh"], "kWh", "energy", "total_increasing", 1000, None, None, False),
+    ("Energy Delivered Low", ["meterReading", "powerDeliverLow"], "kWh", "energy", "total_increasing", 1000, None, None, False),
+    ("Energy Returned High", ["meterReading", "powerReturnHigh"], "kWh", "energy", "total_increasing", 1000, None, None, False),
+    ("Energy Returned Low", ["meterReading", "powerReturnLow"], "kWh", "energy", "total_increasing", 1000, None, None, False),
+    ("Gas Consumption", ["meterReading", "gas"], "m³", "gas", "total_increasing", 1000, None, None, True),
+    ("Voltage L1", ["meterReading", "voltageL1"], "V", "voltage", "measurement", 1, None, None, False),
+    ("Voltage L2", ["meterReading", "voltageL2"], "V", "voltage", "measurement", 1, None, None, False),
+    ("Voltage L3", ["meterReading", "voltageL3"], "V", "voltage", "measurement", 1, None, None, False),
+    ("Current L1", ["meterReading", "currentL1"], "A", "current", "measurement", 1, None, None, False),
+    ("Current L2", ["meterReading", "currentL2"], "A", "current", "measurement", 1, None, None, False),
+    ("Current L3", ["meterReading", "currentL3"], "A", "current", "measurement", 1, None, None, False),
+    ("Power Usage L1", ["meterReading", "powerUsageL1"], "W", "power", "measurement", 1, None, None, False),
+    ("Power Usage L2", ["meterReading", "powerUsageL2"], "W", "power", "measurement", 1, None, None, False),
+    ("Power Usage L3", ["meterReading", "powerUsageL3"], "W", "power", "measurement", 1, None, None, False),
+    ("Dynamic Tariff - Usage", ["dynamicPrices", "usage"], "ct/kWh", None, None, 1, None, None, False),
+    ("Dynamic Tariff - Return", ["dynamicPrices", "return"], "ct/kWh", None, None, 1, None, None, False),
 ]
 
 # Solar sensors - same tuple shape as MAIN_SENSORS (same PowerBaasSensor
@@ -42,27 +46,32 @@ MAIN_SENSORS = [
 # for these specifically. Unique_ids are unchanged from when these lived in
 # MAIN_SENSORS, so existing installs just get their Solar entities
 # re-parented to the new device on next reload, no migration needed.
+# Disabled by default for the same recorder/history-load reason as most of
+# MAIN_SENSORS above - opt-in via the entity registry.
 SOLAR_SENSORS = [
-    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None),
-    ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None),
+    ("Solar Current Power", ["solarReading", "current"], "W", "power", "measurement", 1, None, None, False),
+    ("Solar Total Production", ["solarReading", "total"], "kWh", "energy", "total_increasing", 1000, None, None, False),
 ]
 
 # Combined High+Low energy totals - summed from two MAIN_SENSORS paths, so
 # they need an explicit unique_suffix (no single path to derive one from).
-# Tuple: (name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix)
+# Enabled by default - these are the primary energy totals most users want.
+# Tuple: (name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix, enabled_by_default)
 COMBINED_SENSORS = [
     ("Energy Delivered", ["meterReading", "powerDeliverHigh"], ["meterReading", "powerDeliverLow"],
-     "kWh", "energy", "total_increasing", 1000, None, None, "energy_delivered"),
+     "kWh", "energy", "total_increasing", 1000, None, None, "energy_delivered", True),
     ("Energy Returned", ["meterReading", "powerReturnHigh"], ["meterReading", "powerReturnLow"],
-     "kWh", "energy", "total_increasing", 1000, None, None, "energy_returned"),
+     "kWh", "energy", "total_increasing", 1000, None, None, "energy_returned", True),
 ]
 
-# Diagnostic sensors - device and system information
+# Diagnostic sensors - device and system information. Disabled by default
+# (same recorder/history-load reason as most of MAIN_SENSORS above) - opt-in
+# via the entity registry.
 DIAGNOSTIC_SENSORS = [
-    ("Powerbaas WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2"),
-    ("Powerbaas Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip"),
-    ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock"),
-    ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network"),
+    ("Powerbaas WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", False),
+    ("Powerbaas Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip", False),
+    ("Powerbaas Uptime", ["system", "upSince"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", False),
+    ("Powerbaas IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", False),
 ]
 
 # Connected batteries (e.g. Zendure), polled from a separate endpoint and

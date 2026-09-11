@@ -42,7 +42,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     device_name = hass.data[DOMAIN][entry.entry_id]["name"]
 
     entities = [PowerBaasStatusSensor(coordinator, entry.entry_id, device_name)]
-    for name, path, unit, device_class, state_class, multiplier, entity_category, icon in MAIN_SENSORS + DIAGNOSTIC_SENSORS:
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon, enabled_by_default in MAIN_SENSORS + DIAGNOSTIC_SENSORS:
         unique_id = f"{entry.entry_id}_{'_'.join(path).lower()}"
         entities.append(
             PowerBaasSensor(
@@ -58,6 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 multiplier,
                 entity_category,
                 icon,
+                enabled_by_default=enabled_by_default,
             )
         )
 
@@ -68,7 +69,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         model="Solar",
         via_device=(DOMAIN, entry.entry_id),
     )
-    for name, path, unit, device_class, state_class, multiplier, entity_category, icon in SOLAR_SENSORS:
+    for name, path, unit, device_class, state_class, multiplier, entity_category, icon, enabled_by_default in SOLAR_SENSORS:
         unique_id = f"{entry.entry_id}_{'_'.join(path).lower()}"
         entities.append(
             PowerBaasSensor(
@@ -85,10 +86,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 entity_category,
                 icon,
                 device_info=solar_device_info,
+                enabled_by_default=enabled_by_default,
             )
         )
 
-    for name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix in COMBINED_SENSORS:
+    for name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix, enabled_by_default in COMBINED_SENSORS:
         entities.append(
             PowerBaasCombinedEnergySensor(
                 coordinator,
@@ -104,6 +106,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 multiplier,
                 entity_category,
                 icon,
+                enabled_by_default=enabled_by_default,
             )
         )
 
@@ -224,7 +227,7 @@ class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
     _attr_should_poll = False
 
-    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None, device_info=None):
+    def __init__(self, coordinator, entry_id, device_name, name, path, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None, device_info=None, enabled_by_default=True):
         super().__init__(coordinator)
         self._attr_name = name
         self._path = path
@@ -234,6 +237,7 @@ class PowerBaasSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = unique_id
         self._attr_entity_category = entity_category
         self._attr_icon = icon
+        self._attr_entity_registry_enabled_default = enabled_by_default
         self._multiplier = multiplier
         self._last_value = None
 
@@ -300,7 +304,7 @@ class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
 
     _attr_should_poll = False
 
-    def __init__(self, coordinator, entry_id, device_name, name, path_a, path_b, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None):
+    def __init__(self, coordinator, entry_id, device_name, name, path_a, path_b, unit, device_class, state_class, unique_id, multiplier, entity_category=None, icon=None, enabled_by_default=True):
         super().__init__(coordinator)
         self._attr_name = name
         self._path_a = path_a
@@ -311,6 +315,7 @@ class PowerBaasCombinedEnergySensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = unique_id
         self._attr_entity_category = entity_category
         self._attr_icon = icon
+        self._attr_entity_registry_enabled_default = enabled_by_default
         self._multiplier = multiplier
         self._last_value = None
 
