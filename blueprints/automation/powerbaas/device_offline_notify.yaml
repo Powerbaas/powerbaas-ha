@@ -1,0 +1,54 @@
+blueprint:
+  name: Powerbaas Device - Offline Notification
+  description: >-
+    Runs an action when any Powerbaas device's Status sensor reports
+    Offline, and again once it recovers. Works for all four device types
+    (P1 Meter, Boiler Controller, Airco Bridge, Powerbaas RGB) - they all
+    follow the same offline-detection pattern. P1 Meter/Airco Bridge/RGB
+    report a plain Online/Offline state; Boiler Controller's Status sensor
+    instead reports Idle/Running/Calibration/Error while reachable, so
+    "recovered" here means it left the Offline state, regardless of which
+    of those it lands on.
+  domain: automation
+  input:
+    status_sensor:
+      name: Status sensor entity
+      description: The device's "Status" sensor entity.
+      selector:
+        entity:
+          domain: sensor
+          integration: powerbaas
+    offline_actions:
+      name: Actions to run when it goes offline
+      selector:
+        action: {}
+    recovered_actions:
+      name: Actions to run when it recovers
+      default: []
+      selector:
+        action: {}
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input status_sensor
+    to: Offline
+    id: offline
+  - platform: state
+    entity_id: !input status_sensor
+    from: Offline
+    id: recovered
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: offline
+        sequence: !input offline_actions
+      - conditions:
+          - condition: trigger
+            id: recovered
+        sequence: !input recovered_actions

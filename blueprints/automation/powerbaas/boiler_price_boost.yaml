@@ -1,0 +1,83 @@
+blueprint:
+  name: Powerbaas Boiler Controller - Dynamic Price Boost
+  description: >-
+    Boosts a Powerbaas Boiler Controller to Control Mode "On" (100% heating)
+    whenever your dynamic import tariff drops below a threshold (e.g. free
+    or negative pricing), and switches back to Auto once the price rises
+    above that threshold again - or after a maximum duration, whichever
+    comes first, as a safety cap in case the price sensor gets stuck.
+
+    Pairs well with the P1 Meter's "Dynamic Tariff - Usage" sensor
+    (ct/kWh), which is disabled by default and needs to be enabled first.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    price_sensor:
+      name: Dynamic import price sensor
+      description: >-
+        A sensor whose numeric state is your current import price, e.g. the
+        P1 Meter's "Dynamic Tariff - Usage" sensor (ct/kWh).
+      selector:
+        entity:
+          domain: sensor
+    price_threshold:
+      name: Price threshold
+      description: Boost while the price is below this value.
+      default: 0
+      selector:
+        number:
+          min: -50
+          max: 100
+          step: 0.1
+          unit_of_measurement: ct/kWh
+          mode: box
+    max_boost_duration:
+      name: Maximum boost duration
+      description: >-
+        Safety cap - switches back to Auto after this long even if the
+        price is still below the threshold.
+      default:
+        hours: 2
+        minutes: 0
+        seconds: 0
+      selector:
+        duration: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input price_sensor
+    below: !input price_threshold
+
+condition:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input control_mode
+        state: calibrating
+
+action:
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: "on"
+  - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input price_sensor
+        above: !input price_threshold
+    timeout: !input max_boost_duration
+    continue_on_timeout: true
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: auto

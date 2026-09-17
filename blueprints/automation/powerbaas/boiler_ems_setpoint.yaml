@@ -1,0 +1,74 @@
+blueprint:
+  name: Powerbaas Boiler Controller - EMS Setpoint Control
+  description: >-
+    Push an external EMS/energy-management setpoint (in watts) into a
+    Powerbaas Boiler Controller: switches Control Mode to Manual and writes
+    the value to Target Power whenever the setpoint source changes.
+
+    Works with EMHASS (davidusb-geek/emhass-add-on) out of the box - point
+    the setpoint source at its deferrable-load output sensor (e.g.
+    `sensor.p_deferrable0`), which already reports 0 W or the appliance's
+    nominal wattage per optimized slot, and this blueprint mirrors that
+    straight into Target Power instead of needing EMHASS's own switch-based
+    automation example.
+
+    Pair this with the "Powerbaas Boiler Controller - EMS Watchdog" blueprint
+    so the boiler falls back to Auto if the EMS stops updating, instead of
+    getting stuck heating at a stale setpoint.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    target_power:
+      name: Target Power entity
+      description: The Boiler Controller's "Target Power" number entity.
+      selector:
+        entity:
+          domain: number
+          integration: powerbaas
+    setpoint_source:
+      name: EMS setpoint source
+      description: >-
+        A sensor or input_number whose numeric state is the desired heating
+        power in watts, published by your EMS.
+      selector:
+        entity:
+          domain:
+            - sensor
+            - input_number
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input setpoint_source
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ trigger.to_state.state not in ['unknown', 'unavailable', 'none', ''] }}
+
+action:
+  - if:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: !input control_mode
+            state: manual
+    then:
+      - service: select.select_option
+        target:
+          entity_id: !input control_mode
+        data:
+          option: manual
+  - service: number.set_value
+    target:
+      entity_id: !input target_power
+    data:
+      value: "{{ trigger.to_state.state | float }}"

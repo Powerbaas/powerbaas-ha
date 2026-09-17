@@ -1,0 +1,44 @@
+blueprint:
+  name: Powerbaas Boiler Controller - Manual Mode Timeout
+  description: >-
+    Switches a Powerbaas Boiler Controller back to Auto if it's left sitting
+    in Manual mode for too long - e.g. because someone switched it manually
+    from the UI and forgot to switch back. For a Manual mode driven by an
+    external EMS setpoint, use the "EMS Watchdog" blueprint instead, which
+    reacts to the EMS setpoint going stale rather than a fixed timeout.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    timeout:
+      name: Timeout
+      description: How long Manual mode may stay active before reverting to Auto.
+      default:
+        hours: 4
+        minutes: 0
+        seconds: 0
+      selector:
+        duration: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input control_mode
+    to: manual
+    for: !input timeout
+
+condition: []
+
+action:
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: auto
