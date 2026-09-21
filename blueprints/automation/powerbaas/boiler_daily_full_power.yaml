@@ -1,0 +1,58 @@
+blueprint:
+  name: Powerbaas Boiler Controller - Daily Full Power
+  description: >-
+    Once a day, force a Powerbaas Boiler Controller to Control Mode "On"
+    (100% heating) for a fixed duration, then switch it back to Auto.
+    Useful to guarantee the boiler gets a full heat-up every day - e.g. for
+    legionella protection - even on days without enough solar surplus to
+    reach that in Auto mode.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    boost_time:
+      name: Start time
+      description: Time of day the full-power window starts.
+      selector:
+        time: {}
+    boost_duration:
+      name: Duration
+      description: How long to stay at full power before switching back to Auto.
+      default:
+        hours: 0
+        minutes: 30
+        seconds: 0
+      selector:
+        duration: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: time
+    at: !input boost_time
+
+condition:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input control_mode
+        state: calibrating
+
+action:
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: "on"
+  - delay: !input boost_duration
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: auto

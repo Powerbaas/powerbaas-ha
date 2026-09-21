@@ -1,0 +1,76 @@
+blueprint:
+  name: Powerbaas Boiler Controller - Scheduled Calibration
+  description: >-
+    Periodically runs a full calibration sweep on a Powerbaas Boiler
+    Controller via the `powerbaas.bc_run_calibration` action. Calibration
+    happens automatically over time as the controller operates, so this is
+    entirely optional - use it only if you want to force an immediate,
+    complete curve on a schedule instead of calling the action manually.
+
+    Make sure the boiler is cooled down at the scheduled time, otherwise the
+    heating element can't reach the higher setpoints and the resulting curve
+    will be incomplete. The sweep takes at least 6 minutes; Home Assistant
+    shows a persistent notification with these instructions, and another if
+    it fails.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    calibration_time:
+      name: Time
+      description: Time of day to run the calibration sweep.
+      selector:
+        time: {}
+    calibration_weekdays:
+      name: Days of week
+      description: Which days to run the sweep on.
+      default:
+        - mon
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+
+mode: single
+max_exceeded: silent
+
+variables:
+  control_mode_entity: !input control_mode
+
+trigger:
+  - platform: time
+    at: !input calibration_time
+
+condition:
+  - condition: time
+    weekday: !input calibration_weekdays
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input control_mode
+        state: calibrating
+
+action:
+  - service: powerbaas.bc_run_calibration
+    data:
+      config_entry_id: "{{ config_entry_id(control_mode_entity) }}"

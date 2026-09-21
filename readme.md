@@ -45,6 +45,14 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 - **[Airco Bridge](docs/airco-bridge.md)** - controls a Powerbaas Airco Bridge, sending IR commands to an air conditioner and optionally reading room temperature
 - **[Powerbaas RGB](docs/rgb.md)** - controls a Powerbaas RGB: follow meter power usage, or set color and effect in Standalone mode
 
+## Blueprints
+
+Ready-made automation blueprints (e.g. a daily full-power boiler heat-up, or
+EMS setpoint integration) are available in
+[`blueprints/automation/powerbaas/`](blueprints/automation/powerbaas/) - see
+[docs/blueprints.md](docs/blueprints.md) for the full list and how to import
+them.
+
 ## Development & Testing
 
 See [docs/testing.md](docs/testing.md) for how to run the test suite and the

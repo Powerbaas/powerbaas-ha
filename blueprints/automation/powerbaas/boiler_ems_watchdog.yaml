@@ -1,0 +1,76 @@
+blueprint:
+  name: Powerbaas Boiler Controller - EMS Watchdog
+  description: >-
+    Watches the EMS setpoint source used by the "Powerbaas Boiler Controller
+    - EMS Setpoint Control" blueprint. If it goes unavailable, or simply
+    stops updating for too long while the Boiler Controller is in Manual
+    mode, switches Control Mode back to Auto so the boiler doesn't get stuck
+    heating at a stale setpoint.
+
+    Particularly useful with EMHASS: if the add-on stops running, its output
+    sensor (e.g. `sensor.p_deferrable0`) stays at its last value instead of
+    going unavailable, so the staleness check here is what actually catches
+    it.
+  domain: automation
+  input:
+    control_mode:
+      name: Control Mode entity
+      description: The Boiler Controller's "Control Mode" select entity.
+      selector:
+        entity:
+          domain: select
+          integration: powerbaas
+    setpoint_source:
+      name: EMS setpoint source
+      description: >-
+        The same entity used as the setpoint source in the EMS Setpoint
+        Control blueprint.
+      selector:
+        entity:
+          domain:
+            - sensor
+            - input_number
+    stale_after_minutes:
+      name: Consider stale after (minutes)
+      description: >-
+        How long the setpoint source may go without updating before falling
+        back to Auto.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: minutes
+
+mode: single
+max_exceeded: silent
+
+variables:
+  setpoint_entity: !input setpoint_source
+  stale_after_minutes: !input stale_after_minutes
+
+trigger:
+  - platform: state
+    entity_id: !input setpoint_source
+    to:
+      - unavailable
+      - unknown
+  - platform: time_pattern
+    minutes: "/1"
+
+condition:
+  - condition: state
+    entity_id: !input control_mode
+    state: manual
+  - condition: template
+    value_template: >-
+      {{ states(setpoint_entity) in ['unavailable', 'unknown'] or
+         (as_timestamp(now()) - as_timestamp(states[setpoint_entity].last_changed))
+         > (stale_after_minutes | int * 60) }}
+
+action:
+  - service: select.select_option
+    target:
+      entity_id: !input control_mode
+    data:
+      option: auto

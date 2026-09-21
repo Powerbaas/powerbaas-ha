@@ -47,9 +47,10 @@ DEFAULT_POLL_INTERVAL = 10
 # request-latency jitter - see BoilerControllerCoordinator._apply_boot_time.
 BOOT_TIME_DRIFT_TOLERANCE = 60
 
-# Calibration service names
-SERVICE_RUN_CALIBRATION = "run_calibration"
-SERVICE_CANCEL_CALIBRATION = "cancel_calibration"
+# Calibration service names (bc_-prefixed since services.yaml is shared
+# across all device types under the single "powerbaas" domain)
+SERVICE_RUN_CALIBRATION = "bc_run_calibration"
+SERVICE_CANCEL_CALIBRATION = "bc_cancel_calibration"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 
 # Poll interval while waiting for device calibration to complete
