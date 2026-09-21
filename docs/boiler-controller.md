@@ -28,17 +28,12 @@ Set via the **Control Mode** select entity:
 
 ## Calibration
 
-The BC module measures the actual wattage at each heating percentage so the controller can convert requested watts into an accurate dimmer setting. Calibration happens automatically over time, but you can trigger a full sweep manually:
+The BC module measures the actual wattage at each heating percentage so the controller can convert requested watts into an accurate dimmer setting. Calibration happens automatically over time, so this is optional - use it only if you want an immediate, complete curve. It's triggered as an action, not an entity, since it's a one-off operation rather than an ongoing device state:
 
-- **Calibrate Start** button - starts a sweep. Make sure the boiler has cooled down first, otherwise the heating element can't reach the higher setpoints and the resulting curve will be incomplete. The sweep takes at least 6 minutes.
-- **Calibrate Stop** button - cancels an active sweep after the current step.
+- `powerbaas.bc_run_calibration` - starts a sweep. Make sure the boiler has cooled down first, otherwise the heating element can't reach the higher setpoints and the resulting curve will be incomplete. The sweep takes at least 6 minutes. Home Assistant shows a persistent notification with these instructions when the action runs, and another if it fails.
+- `powerbaas.bc_cancel_calibration` - cancels an active sweep after the current step.
 
-The same actions are available as services for use in automations/scripts:
-
-- `powerbaas.run_calibration`
-- `powerbaas.cancel_calibration`
-
-Both accept an optional `config_entry_id` field, required only when you have more than one Boiler Controller configured.
+Both accept an optional `config_entry_id` field, required only when you have more than one Boiler Controller configured. Call them from Developer Tools → Actions, a script, or an automation.
 
 ## Safety limit
 
@@ -63,7 +58,6 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 - `Max Heating Power` (select) - configurable safety ceiling, in watts (breaker presets)
 - `Minimum Heating Power` (number) - Auto-mode-only floor, in watts
 - `SSR` (switch) - the module's SSR relay state
-- `Calibrate Start` / `Calibrate Stop` (buttons)
 - `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address

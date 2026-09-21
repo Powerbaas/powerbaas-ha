@@ -1,7 +1,9 @@
 import logging
+import time
 
 import voluptuous as vol
 
+from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -105,6 +107,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         domain_data.pop("_services_registered", None)
 
 
+def _async_notify_calibration(
+    hass: HomeAssistant, entry_id: str, message: str, *, unique: bool = False
+) -> None:
+    """Post a persistent notification about a calibration run.
+
+    Mirrors what the (now removed) Calibrate Start/Stop buttons used to show
+    directly in the UI - kept here so triggering calibration via the service
+    (Developer Tools > Actions, a script, or a blueprint) still surfaces the
+    same cooldown/duration warning and success/failure feedback.
+    """
+    suffix = f"_{int(time.time())}" if unique else ""
+    persistent_notification.async_create(
+        hass,
+        message,
+        title="Boiler Controller",
+        notification_id=f"boiler_controller_calibration_{entry_id}{suffix}",
+    )
+
+
 async def _async_register_services(hass: HomeAssistant) -> None:
     """Register the calibration service once per Home Assistant instance."""
 
@@ -114,9 +135,32 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
     async def _handle_run_calibration(call: ServiceCall) -> None:
         coordinator = _async_resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
-        _LOGGER.info("Starting calibration for entry %s", coordinator.config_entry.entry_id)
-        await coordinator.async_run_calibration()
-        _LOGGER.info("Calibration completed for entry %s", coordinator.config_entry.entry_id)
+        entry_id = coordinator.config_entry.entry_id
+
+        _async_notify_calibration(
+            hass,
+            entry_id,
+            "Calibration started.\n\n"
+            "- Make sure the boiler is **cooled down** - if it is already at "
+            "temperature the heating element cannot reach the higher setpoints "
+            "and the curve will be incomplete.\n"
+            "- The sweep takes **at least 6 minutes** while it measures every "
+            "percentage point against the actual wattage.\n"
+            "- Running this manually is **optional** - the controller "
+            "calibrates itself automatically over time. Use this action only "
+            "when you want an immediate, complete curve.\n\n"
+            "Call `powerbaas.bc_cancel_calibration` to abort.",
+            unique=True,
+        )
+
+        _LOGGER.info("Starting calibration for entry %s", entry_id)
+        try:
+            await coordinator.async_run_calibration()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.error("Calibration failed for %s: %s", coordinator.config_entry.title, err)
+            _async_notify_calibration(hass, entry_id, f"Calibration failed: {err}")
+            raise
+        _LOGGER.info("Calibration completed for entry %s", entry_id)
 
     hass.services.async_register(
         DOMAIN,
@@ -135,6 +179,11 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         _LOGGER.info(
             "Calibration cancellation requested for entry %s",
             coordinator.config_entry.entry_id,
+        )
+        _async_notify_calibration(
+            hass,
+            coordinator.config_entry.entry_id,
+            "Calibration cancellation requested. The sweep will stop after the current step.",
         )
 
     hass.services.async_register(

@@ -162,3 +162,7 @@ conventions, and the reproduce-first bugfix workflow.
   Commits authored by the user should not attribute Claude as a co-author,
   even when Claude assisted. Applies to all commits in this repo and all PRs
   opened from it.
+- **Keep commit messages short, concise, and to the point.** A single
+  conventional-commit subject line (`type(scope): summary`) is enough for
+  most changes here - skip the body unless something genuinely needs
+  explaining beyond the diff itself.

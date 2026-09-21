@@ -1,5 +1,5 @@
-run_calibration:
-  name: Run Calibration
+bc_run_calibration:
+  name: "Boiler Controller: Run Calibration"
   description: |
     Start an automated calibration run on the BC module. The device will sweep through power levels
     and report measured watts. Results are stored locally for future calculations.
@@ -11,8 +11,8 @@ run_calibration:
       selector:
         text: {}
 
-cancel_calibration:
-  name: Cancel Calibration
+bc_cancel_calibration:
+  name: "Boiler Controller: Cancel Calibration"
   description: Request the active calibration run to stop.
   fields:
     config_entry_id:

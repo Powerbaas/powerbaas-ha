@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS_BY_DEVICE_TYPE = {
     DEVICE_TYPE_P1_METER: ["sensor"],
-    DEVICE_TYPE_BOILER_CONTROLLER: ["sensor", "select", "number", "button", "switch"],
+    DEVICE_TYPE_BOILER_CONTROLLER: ["sensor", "select", "number", "switch"],
     DEVICE_TYPE_AIRCO_BRIDGE: ["climate", "sensor", "select"],
     DEVICE_TYPE_RGB: ["light", "sensor", "select", "switch"],
 }
