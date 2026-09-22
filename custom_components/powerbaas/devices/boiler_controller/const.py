@@ -77,7 +77,7 @@ MAIN_SENSORS = [
     ("Heating Percentage", ["status", "heatingPercentage"], "%", None, "measurement", 1, None, "mdi:brightness-percent", "device_heating_percentage", False),
     ("Internal Temperature", ["status", "temperature"], "°C", "temperature", "measurement", 1, None, "mdi:thermometer", "device_temperature", True),
     ("External Temperature", ["status", "temperatureExternal"], "°C", "temperature", "measurement", 1, None, "mdi:thermometer", "device_temperature_external", False),
-    ("Device Energy", ["status", "total"], "kWh", "energy", "total_increasing", 1000, None, "mdi:lightning-bolt", "device_energy", True),
+    ("Device Energy", ["status", "total"], "kWh", "energy", "total_increasing", 1000, None, "mdi:lightning-bolt", "device_energy", False),
 ]
 
 # Note: the device's own upSince/uptimeSeconds fields change on every poll,
@@ -87,7 +87,7 @@ MAIN_SENSORS = [
 # unless the device actually reboots.
 DIAGNOSTIC_SENSORS = [
     ("Firmware Version", ["system", "firmwareVersion"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:chip", "device_firmware_version", True),
-    ("WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", "device_wifi_strength", True),
+    ("WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", "device_wifi_strength", False),
     ("Up Since", ["system", "bootTime"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", "device_up_since", True),
     ("IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", "device_ip", True),
 ]
