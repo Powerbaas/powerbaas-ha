@@ -37,7 +37,7 @@ Both accept an optional `config_entry_id` field, required only when you have mor
 
 ## Safety limit
 
-Requested power is always clamped to the **Max Heating Power** select, which mirrors the module's own configurable ceiling (matches your meter cupboard's breaker: 3600 / 3000 / 2500 / 2000 W). The module also enforces this ceiling itself.
+Requested power is always clamped to the **Max Heating Power** select, which mirrors the module's own configurable ceiling (matches your meter cupboard's breaker: 3500 / 3000 / 2500 / 2000 / 1500 W). The module also enforces this ceiling itself.
 
 **Minimum Heating Power** sets a floor (in watts) that's applied only in **Auto** mode - useful for boilers that need to stay powered (e.g. for WiFi) even without solar surplus. It has no effect in Manual, On, or Off mode.
 
