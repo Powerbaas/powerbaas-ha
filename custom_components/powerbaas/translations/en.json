@@ -37,7 +37,7 @@
       },
       "power_sensor_net": {
         "title": "Select Net Power Sensor",
-        "description": "Choose a single sensor that reports net grid power (negative when exporting to the grid).",
+        "description": "Choose a single sensor that reports net grid power (negative when exporting to the grid). If a Powerbaas P1 Meter is set up, its Power Usage sensor is preselected.",
         "data": {
           "power_sensor": "Net power sensor"
         }
@@ -132,7 +132,7 @@
       },
       "power_sensor_net": {
         "title": "Select New Net Power Sensor",
-        "description": "Choose a single sensor that reports net grid power (negative when exporting).",
+        "description": "Choose a single sensor that reports net grid power (negative when exporting). If a Powerbaas P1 Meter is set up, its Power Usage sensor is listed first.",
         "data": {
           "power_sensor": "Net power sensor"
         }

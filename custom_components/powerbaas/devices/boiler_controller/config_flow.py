@@ -6,10 +6,15 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from ...const import DOMAIN, CONF_DEVICE_TYPE, DEVICE_TYPE_BOILER_CONTROLLER
+from ...const import (
+    DOMAIN,
+    CONF_DEVICE_TYPE,
+    DEVICE_TYPE_BOILER_CONTROLLER,
+    DEVICE_TYPE_P1_METER,
+)
 from .const import (
     CONF_POWER_SENSOR,
     CONF_POWER_SENSOR_TYPE,
@@ -22,6 +27,7 @@ from .const import (
     CONF_DEVICE_ID,
     BC_HOST_PREFIX,
 )
+from ..p1_meter.const import P1_POWER_USAGE_UNIQUE_ID_SUFFIX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +47,28 @@ def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_
         if entry.unique_id and entry.unique_id.lower() == normalized:
             return entry
 
+    return None
+
+
+def _find_powerbaas_p1_power_sensor(hass) -> str | None:
+    """Return the net Power Usage entity of a configured Powerbaas P1 Meter.
+
+    Used to preselect the P1 as the Boiler Controller's power source, like the
+    Homey app's auto-link. Multiple P1 Meters isn't a supported setup (one grid
+    connection, one meter), so the first one found is used.
+    """
+    registry = er.async_get(hass)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.data.get(CONF_DEVICE_TYPE) != DEVICE_TYPE_P1_METER:
+            continue
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}{P1_POWER_USAGE_UNIQUE_ID_SUFFIX}"
+        )
+        if not entity_id:
+            continue
+        reg_entry = registry.async_get(entity_id)
+        if reg_entry and reg_entry.disabled_by is None:
+            return entity_id
     return None
 
 
@@ -85,10 +113,18 @@ class DeviceValidationMixin:
 
         Includes both dedicated return/usage sensors (always positive) and
         net power sensors (negative when exporting); the user picks which
-        flavour they configured via the power sensor type field.
+        flavour they configured via the power sensor type field. A Powerbaas
+        P1 Meter's net power sensor is always listed first.
         """
         sensors = {}
+        p1_sensor = _find_powerbaas_p1_power_sensor(self.hass)
+        if p1_sensor:
+            state = self.hass.states.get(p1_sensor)
+            friendly_name = state.attributes.get("friendly_name", p1_sensor) if state else p1_sensor
+            sensors[p1_sensor] = f"{friendly_name} ({p1_sensor}) [W] - Powerbaas P1"
         for entity_id in self.hass.states.async_entity_ids("sensor"):
+            if entity_id in sensors:
+                continue
             state = self.hass.states.get(entity_id)
             if not state:
                 continue
@@ -133,6 +169,17 @@ class DeviceValidationMixin:
         return vol.Schema({
             vol.Required(CONF_POWER_SENSOR_TYPE, default=default): self._sensor_type_selector(),
         })
+
+    @staticmethod
+    def _required_with_default(key: str, default: str | None) -> vol.Required:
+        """vol.Required with a default only when there is one.
+
+        voluptuous treats default=None as a real default of None rather than
+        "no default", which would prefill the dropdown with an invalid value.
+        """
+        if default:
+            return vol.Required(key, default=default)
+        return vol.Required(key)
 
     def _sensor_dropdown(self, sensors: dict, default=None):
         """Build a dropdown selector from the candidate sensors mapping."""
@@ -241,7 +288,9 @@ class BoilerControllerFlowMixin(DeviceValidationMixin):
             )
 
         schema = vol.Schema({
-            vol.Required(CONF_POWER_SENSOR): self._sensor_dropdown(sensors),
+            self._required_with_default(
+                CONF_POWER_SENSOR, _find_powerbaas_p1_power_sensor(self.hass)
+            ): self._sensor_dropdown(sensors),
         })
         return self.async_show_form(step_id="power_sensor_net", data_schema=schema)
 
@@ -414,7 +463,11 @@ class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsF
         if not sensors:
             return self.async_abort(reason="no_power_sensors")
 
-        current_sensor = self._config_entry.data.get(CONF_POWER_SENSOR)
+        # Switching from split to net leaves no current sensor: fall back to
+        # the Powerbaas P1 Meter, same as when first adding the device.
+        current_sensor = self._config_entry.data.get(
+            CONF_POWER_SENSOR
+        ) or _find_powerbaas_p1_power_sensor(self.hass)
 
         if user_input is not None:
             self.data[CONF_POWER_SENSOR] = user_input[CONF_POWER_SENSOR]
@@ -423,8 +476,8 @@ class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsF
             return await self._finalize()
 
         schema = vol.Schema({
-            vol.Required(
-                CONF_POWER_SENSOR, default=current_sensor
+            self._required_with_default(
+                CONF_POWER_SENSOR, current_sensor
             ): self._sensor_dropdown(sensors),
         })
         return self.async_show_form(step_id="power_sensor_net", data_schema=schema)

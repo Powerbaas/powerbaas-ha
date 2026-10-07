@@ -15,6 +15,8 @@ The controller watches a power sensor you already have in Home Assistant (your P
    - **Net power sensor** - a single signed sensor that goes negative when exporting to the grid
    - **Split sensors** - two separate sensors, one for grid return (export) and one for grid usage (import), both always ≥ 0
 
+   If a Powerbaas P1 Meter is set up in this integration, its **Power Usage** sensor (net, signed) is listed first and preselected as the net power sensor, so it takes priority by default. You can still pick a different sensor.
+
 You can change the power sensor or the module URL later from the integration's options.
 
 ## Control modes

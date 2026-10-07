@@ -37,7 +37,7 @@
       },
       "power_sensor_net": {
         "title": "Selecteer Netto Vermogen Sensor",
-        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering).",
+        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering). Is er een Powerbaas P1-meter ingesteld, dan staat de Power Usage-sensor daarvan bovenaan en is die voorgeselecteerd.",
         "data": {
           "power_sensor": "Netto vermogen sensor"
         }
@@ -132,7 +132,7 @@
       },
       "power_sensor_net": {
         "title": "Selecteer Nieuwe Netto Vermogen Sensor",
-        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering).",
+        "description": "Kies één sensor die het netto netvermogen rapporteert (negatief bij teruglevering). Is er een Powerbaas P1-meter ingesteld, dan staat de Power Usage-sensor daarvan bovenaan.",
         "data": {
           "power_sensor": "Netto vermogen sensor"
         }
