@@ -14,6 +14,11 @@ MAX_TIMEOUT = 10
 # advertises the same "powerbaas.local" name)
 P1_MDNS_HOSTNAME = "powerbaas"
 
+# unique_id suffix (after the entry_id) of the net "Power Usage" sensor -
+# negative while returning to the grid. The Boiler Controller config flow
+# looks it up to preselect the P1 as its power source.
+P1_POWER_USAGE_UNIQUE_ID_SUFFIX = "_meterreading_powerusage"
+
 # Main reading sensors - primary energy data
 # Tuple: (name, path, unit, device_class, state_class, multiplier, entity_category, icon, enabled_by_default)
 # Only Power Usage and Gas Consumption default to enabled - the rest (per-phase
