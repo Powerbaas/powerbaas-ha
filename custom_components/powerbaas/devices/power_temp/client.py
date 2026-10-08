@@ -1,4 +1,4 @@
-"""Client for interacting with the Powerbaas PowerTemp firmware via HTTP API."""
+"""Client for interacting with the PowerTemp firmware via HTTP API."""
 from __future__ import annotations
 
 import logging
@@ -31,7 +31,7 @@ class PowerTempCommandError(Exception):
 
 
 class PowerTempClient:
-    """Helper class to interact with the Powerbaas PowerTemp HTTP API."""
+    """Helper class to interact with the PowerTemp HTTP API."""
 
     def __init__(self, hass: HomeAssistant, base_url: str) -> None:
         self.hass = hass
@@ -44,15 +44,15 @@ class PowerTempClient:
             async with self._session.get(url, timeout=REQUEST_TIMEOUT) as response:
                 if response.status == 200:
                     data = await response.json(content_type=None)
-                    _LOGGER.debug("Powerbaas PowerTemp %s: %s", path, data)
+                    _LOGGER.debug("PowerTemp %s: %s", path, data)
                     return data if isinstance(data, dict) else None
                 _LOGGER.warning(
-                    "Powerbaas PowerTemp %s request failed with %s", path, response.status
+                    "PowerTemp %s request failed with %s", path, response.status
                 )
         except aiohttp.ClientError as err:
-            _LOGGER.warning("Powerbaas PowerTemp %s request error: %s", path, err)
+            _LOGGER.warning("PowerTemp %s request error: %s", path, err)
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error("Unexpected Powerbaas PowerTemp %s error: %s", path, err)
+            _LOGGER.error("Unexpected PowerTemp %s error: %s", path, err)
         return None
 
     async def async_get_sensors(self) -> Optional[Dict[str, Any]]:
@@ -79,21 +79,21 @@ class PowerTempClient:
             async with self._session.post(url, json=body, timeout=REQUEST_TIMEOUT) as response:
                 data = await response.json(content_type=None)
                 if response.status == 200 and isinstance(data, dict):
-                    _LOGGER.debug("Powerbaas PowerTemp config updated: %s", body)
+                    _LOGGER.debug("PowerTemp config updated: %s", body)
                     return data
                 code = data.get("error") if isinstance(data, dict) else None
                 _LOGGER.warning(
-                    "Powerbaas PowerTemp config update failed with %s: %s",
+                    "PowerTemp config update failed with %s: %s",
                     response.status,
                     code,
                 )
                 raise PowerTempCommandError(code or f"http_{response.status}")
         except aiohttp.ClientError as err:
-            _LOGGER.warning("Powerbaas PowerTemp config update error: %s", err)
+            _LOGGER.warning("PowerTemp config update error: %s", err)
             raise PowerTempCommandError("cannot_connect") from err
         except ValueError as err:
             raise PowerTempCommandError("invalid_response") from err
 
     async def async_test_connection(self) -> bool:
-        """Check whether the Powerbaas PowerTemp is reachable."""
+        """Check whether the PowerTemp is reachable."""
         return await self.async_get_sensors() is not None
