@@ -2,6 +2,7 @@ import logging
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers import device_registry as dr
 
 from .const import (
     DOMAIN,
@@ -22,7 +23,7 @@ PLATFORMS_BY_DEVICE_TYPE = {
     DEVICE_TYPE_BOILER_CONTROLLER: ["sensor", "select", "number", "switch"],
     DEVICE_TYPE_AIRCO_BRIDGE: ["climate", "sensor", "select"],
     DEVICE_TYPE_RGB: ["light", "sensor", "select", "switch"],
-    DEVICE_TYPE_POWER_TEMP: ["sensor"],
+    DEVICE_TYPE_POWER_TEMP: ["sensor", "number", "select", "switch"],
 }
 
 _SETUP_ENTRY = {
@@ -95,3 +96,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
 
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deleting a device from the UI - only PowerTemp port sub-devices support it."""
+    if _device_type(entry) != DEVICE_TYPE_POWER_TEMP:
+        return False
+    return await power_temp.async_remove_config_entry_device(hass, entry, device_entry)

@@ -13,8 +13,21 @@ _LOGGER = logging.getLogger(__name__)
 
 API_SENSORS = "/api/sensors"
 API_SYSTEM = "/api/system"
+API_CONFIG = "/api/config"
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=10)
+
+
+class PowerTempCommandError(Exception):
+    """A config change was not applied.
+
+    ``code`` is the firmware's ``{"error": ...}`` code (e.g.
+    ``invalid_thresholds``, ``multiple_ambient``) or ``cannot_connect``.
+    """
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 class PowerTempClient:
@@ -49,6 +62,37 @@ class PowerTempClient:
     async def async_get_system(self) -> Optional[Dict[str, Any]]:
         """Fetch system information from /api/system (flat object)."""
         return await self._async_get_json(API_SYSTEM)
+
+    async def async_get_config(self) -> Optional[Dict[str, Any]]:
+        """Fetch thresholds, delta limits and per-port sensor config from /api/config."""
+        return await self._async_get_json(API_CONFIG)
+
+    async def async_update_config(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """POST a partial config; returns the resulting full config.
+
+        The firmware merges top-level keys (and keys inside ``thresholds`` /
+        ``delta``), but a ``sensors`` array replaces the whole sensor list.
+        Raises PowerTempCommandError when the change is rejected.
+        """
+        url = f"{self.base_url}{API_CONFIG}"
+        try:
+            async with self._session.post(url, json=body, timeout=REQUEST_TIMEOUT) as response:
+                data = await response.json(content_type=None)
+                if response.status == 200 and isinstance(data, dict):
+                    _LOGGER.debug("Powerbaas PowerTemp config updated: %s", body)
+                    return data
+                code = data.get("error") if isinstance(data, dict) else None
+                _LOGGER.warning(
+                    "Powerbaas PowerTemp config update failed with %s: %s",
+                    response.status,
+                    code,
+                )
+                raise PowerTempCommandError(code or f"http_{response.status}")
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Powerbaas PowerTemp config update error: %s", err)
+            raise PowerTempCommandError("cannot_connect") from err
+        except ValueError as err:
+            raise PowerTempCommandError("invalid_response") from err
 
     async def async_test_connection(self) -> bool:
         """Check whether the Powerbaas PowerTemp is reachable."""
