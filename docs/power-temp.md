@@ -1,10 +1,10 @@
-# Powerbaas PowerTemp
+# PowerTemp
 
 > **Under development** - `power_temp` is listed in `DISABLED_DEVICE_TYPES`
 > (`custom_components/powerbaas/const.py`), so it's hidden from the "add
 > device" menu and zeroconf discovery. Remove it from that set to release it.
 
-Monitors a Powerbaas PowerTemp from Home Assistant. The PowerTemp is a WiFi meter-cabinet monitor with 16 sensor ports (NTC or DS18B20, auto-detected per port) that warns when a group or connection runs hot.
+Monitors a PowerTemp from Home Assistant. The PowerTemp is a WiFi meter-cabinet monitor with 16 sensor ports (NTC or DS18B20, auto-detected per port) that warns when a group or connection runs hot.
 
 ## How it works
 
@@ -15,7 +15,7 @@ Each connector port with a sensor gets its own **sub-device** under the PowerTem
 ## Configuration
 
 1. Go to Settings → Devices & Services → Add Integration
-2. Search for "Powerbaas" and choose **Powerbaas PowerTemp** in the device type menu
+2. Search for "Powerbaas" and choose **PowerTemp** in the device type menu
 3. Devices on the local network are auto-discovered (hostnames starting with `pb-pt-`) via zeroconf; you can also enter the URL manually (e.g. `http://pb-pt-xxxxxxxxxxxx.local`)
 
 ## Managing sensors
@@ -41,12 +41,12 @@ If the device is unreachable when Home Assistant sets up (or reloads) the integr
 
 Per port sub-device (keyed by port number, so renaming a sensor keeps the same entities):
 
-- Temperature (sensor, °C, named after the sub-device) - with the device's offset applied; unavailable while the port has no valid reading. Attributes: `port`, `sensor_type` (`ntc` / `ds18b20` / `shorted`), `status`, `delta_c`, `age_s`, `ambient`, `enabled`, `configured`
+- `Temperature` (sensor, °C) - with the device's offset applied; unavailable while the port has no valid reading. Attributes: `port`, `sensor_type` (`ntc` / `ds18b20` / `shorted`), `status`, `delta_c`, `age_s`, `ambient`, `enabled`, `configured`
 - `Status` (enum sensor) - `ok` / `warning` / `alarm` / `missing` / `error` / `disabled`
 
-New ports get a sub-device automatically, without a reload. A sub-device is named after the sensor's name on the device, or `Port N` when it has none.
+New ports get a sub-device automatically, without a reload. A sub-device is named after the sensor's name on the device, or `Temp N` when it has none.
 
-Hub device:
+Hub device (`PowerTemp Manager`):
 
 - `Overall Status` (enum sensor) - worst level of all enabled ports: `ok` / `warning` / `fault` / `alarm`
 - `Ambient Temperature` (sensor, °C) - from the ambient port; unavailable when none is set

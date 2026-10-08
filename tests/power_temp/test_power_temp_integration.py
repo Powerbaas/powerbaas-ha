@@ -111,14 +111,14 @@ async def test_port_sub_devices_hang_under_hub(hass, setup) -> None:
     port5 = registry.async_get_device(identifiers={(DOMAIN, f"{entry.entry_id}_port_5")})
 
     assert entry.state is ConfigEntryState.LOADED
-    assert hub is not None
+    assert hub.name == "PowerTemp Manager"
     assert port1.name == "Groep 1"
     assert port1.via_device_id == hub.id
-    assert port5.name == "Port 5"
+    assert port5.name == "Temp 5"
 
     temperature = hass.states.get(_entity_id(hass, "sensor", "port_1_temperature", entry))
     assert temperature.state == "28.3"
-    assert temperature.attributes["friendly_name"] == "Groep 1"
+    assert temperature.attributes["friendly_name"] == "Groep 1 Temperature"
 
 
 async def test_config_entities_and_new_sensor_issue(hass, setup) -> None:
