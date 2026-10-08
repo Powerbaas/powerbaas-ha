@@ -1,4 +1,4 @@
-"""Config flow steps for the Powerbaas PowerTemp device type."""
+"""Config flow steps for the PowerTemp device type."""
 import logging
 from urllib.parse import urlparse
 
@@ -59,7 +59,7 @@ def _device_id_from_url(url: str) -> str | None:
 
 
 def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_id: str | None = None):
-    """Return an existing entry that already manages this Powerbaas PowerTemp."""
+    """Return an existing entry that already manages this PowerTemp."""
     if not device_id:
         return None
 
@@ -88,9 +88,9 @@ async def _async_test_power_temp_connection(hass, url: str) -> bool:
         ) as resp:
             return resp.status == 200
     except aiohttp.ClientError as err:
-        _LOGGER.warning("Powerbaas PowerTemp connection error: %s", err)
+        _LOGGER.warning("PowerTemp connection error: %s", err)
     except Exception as err:  # pragma: no cover
-        _LOGGER.error("Unexpected Powerbaas PowerTemp test error: %s", err)
+        _LOGGER.error("Unexpected PowerTemp test error: %s", err)
     return False
 
 
@@ -149,7 +149,7 @@ def coordinator_for_entry(hass, entry_id: str):
 
 
 class PowerTempFlowMixin:
-    """Config flow steps for adding a Powerbaas PowerTemp."""
+    """Config flow steps for adding a PowerTemp."""
 
     async def _async_zeroconf_power_temp(self, discovery_info: ZeroconfServiceInfo):
         """Handle Zeroconf discovery for pb-pt-* devices.
@@ -176,12 +176,12 @@ class PowerTempFlowMixin:
 
         self.data[CONF_DEVICE_URL] = device_url
         self.data[CONF_DEVICE_ID] = short_hostname
-        self.context["title_placeholders"] = {"name": f"Powerbaas PowerTemp ({short_hostname})"}
+        self.context["title_placeholders"] = {"name": f"PowerTemp ({short_hostname})"}
 
         return await self.async_step_power_temp()
 
     async def async_step_power_temp(self, user_input=None):
-        """Handle the initial step for adding a Powerbaas PowerTemp."""
+        """Handle the initial step for adding a PowerTemp."""
         self.data = getattr(self, "data", {})
         self.data[CONF_DEVICE_TYPE] = DEVICE_TYPE_POWER_TEMP
 
@@ -195,7 +195,7 @@ class PowerTempFlowMixin:
         return self.async_show_form(step_id="power_temp", data_schema=schema, errors={})
 
     async def async_step_power_temp_device_config(self, user_input=None):
-        """Handle Powerbaas PowerTemp connection configuration."""
+        """Handle PowerTemp connection configuration."""
         errors = {}
         default_url = _normalize_url(self.data.get(CONF_DEVICE_URL, ""))
 
@@ -242,7 +242,7 @@ class PowerTempFlowMixin:
 
 
 class PowerTempOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Powerbaas PowerTemp: device URL and per-port sensor config."""
+    """Handle options flow for PowerTemp: device URL and per-port sensor config."""
 
     def __init__(self, config_entry):
         super().__init__()
@@ -328,7 +328,7 @@ class PowerTempOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_power_temp_device_config(self, user_input=None):
-        """Ask for/update the Powerbaas PowerTemp URL."""
+        """Ask for/update the PowerTemp URL."""
         errors = {}
         default_url = _normalize_url(self._config_entry.data.get(CONF_DEVICE_URL, ""))
 
