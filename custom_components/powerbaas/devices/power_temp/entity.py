@@ -1,4 +1,4 @@
-"""Shared device info and base classes for Powerbaas PowerTemp entities."""
+"""Shared device info and base classes for PowerTemp entities."""
 from __future__ import annotations
 
 from typing import Any
@@ -10,16 +10,16 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ...const import DOMAIN
 from .client import PowerTempCommandError
-from .const import port_device_identifier, port_display_name
+from .const import HUB_DEVICE_NAME, port_device_identifier, port_display_name
 
 
 def hub_device_info(coordinator, entry: ConfigEntry) -> DeviceInfo:
     system = (coordinator.data or {}).get("system") or {}
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name=coordinator.device_name,
+        name=HUB_DEVICE_NAME,
         manufacturer="Powerbaas",
-        model="Powerbaas PowerTemp",
+        model="PowerTemp",
         sw_version=str(system.get("firmwareVersion", "Unknown")),
         configuration_url=coordinator.device_url,
     )

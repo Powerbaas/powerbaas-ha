@@ -1,4 +1,4 @@
-"""Switch entities for the Powerbaas PowerTemp."""
+"""Switch entities for the PowerTemp."""
 from __future__ import annotations
 
 from typing import Any

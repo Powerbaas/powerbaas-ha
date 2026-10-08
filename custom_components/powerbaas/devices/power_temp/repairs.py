@@ -1,4 +1,4 @@
-"""Repair flow for adopting a newly detected Powerbaas PowerTemp sensor."""
+"""Repair flow for adopting a newly detected PowerTemp sensor."""
 from __future__ import annotations
 
 import logging

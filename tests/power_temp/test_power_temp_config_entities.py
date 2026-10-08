@@ -17,7 +17,7 @@ from custom_components.powerbaas.devices.power_temp.switch import PowerTempDelta
 def _coordinator(*, online: bool = True):
     return SimpleNamespace(
         device_online=online,
-        device_name="Powerbaas PowerTemp",
+        device_name="PowerTemp",
         data={
             "config": {
                 "thresholds": {"warnC": 45, "alarmC": 60, "hysteresisC": 2},
@@ -84,10 +84,10 @@ async def test_ambient_select_options_and_selection() -> None:
     coordinator = _coordinator()
     select = _entity(PowerTempAmbientSelect, coordinator, ["sensors"])
 
-    assert select.options == [NO_AMBIENT, "Groep 1 (port 1)", "Port 5", "Ambient (port 16)"]
+    assert select.options == [NO_AMBIENT, "Groep 1 (port 1)", "Temp 5", "Ambient (port 16)"]
     assert select.current_option == "Ambient (port 16)"
 
-    await select.async_select_option("Port 5")
+    await select.async_select_option("Temp 5")
     coordinator.async_set_ambient_port.assert_awaited_once_with(5)
 
 

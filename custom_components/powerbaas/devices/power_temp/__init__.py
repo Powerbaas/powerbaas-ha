@@ -1,4 +1,4 @@
-"""Powerbaas PowerTemp (meter cabinet temperature monitor) support."""
+"""PowerTemp (meter cabinet temperature monitor) support."""
 from __future__ import annotations
 
 import logging
@@ -75,7 +75,7 @@ class PowerTempCoordinator(DataUpdateCoordinator):
         if sensors is None:
             self._register_failure()
             raise UpdateFailed(
-                f"Powerbaas PowerTemp sensors request failed for {self.device_name}"
+                f"PowerTemp sensors request failed for {self.device_name}"
             )
 
         self._register_success()
@@ -140,7 +140,7 @@ class PowerTempCoordinator(DataUpdateCoordinator):
         if self._consecutive_failures == OFFLINE_AFTER_CONSECUTIVE_FAILURES:
             self.device_online = False
             _LOGGER.warning(
-                "Powerbaas PowerTemp offline for %s after %s consecutive failed fetches",
+                "PowerTemp offline for %s after %s consecutive failed fetches",
                 self.device_name,
                 self._consecutive_failures,
             )
@@ -246,12 +246,12 @@ class PowerTempCoordinator(DataUpdateCoordinator):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
-    """Set up a Powerbaas PowerTemp device and return its runtime data."""
+    """Set up a PowerTemp device and return its runtime data."""
     device_url = entry.data.get(CONF_DEVICE_URL)
     if not device_url:
-        raise ConfigEntryNotReady("No device URL configured for Powerbaas PowerTemp.")
+        raise ConfigEntryNotReady("No device URL configured for PowerTemp.")
 
-    device_name = entry.title or "Powerbaas PowerTemp"
+    device_name = entry.title or "PowerTemp"
     client = PowerTempClient(hass, device_url)
 
     if not await client.async_test_connection():

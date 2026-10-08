@@ -31,7 +31,7 @@ def _coordinator(*, ports: dict | None = None) -> PowerTempCoordinator:
         async_update_config=AsyncMock(return_value={}),
     )
     coordinator.async_refresh = AsyncMock()
-    coordinator.device_name = "Powerbaas PowerTemp"
+    coordinator.device_name = "PowerTemp"
     coordinator.known_ports = set(ports or {})
     coordinator.ignored_ports = set()
     coordinator.data = {"config": copy.deepcopy(DEVICE_CONFIG), "ports": ports or {}}
