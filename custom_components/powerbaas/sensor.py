@@ -3,11 +3,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, DEVICE_TYPE_BOILER_CONTROLLER, DEVICE_TYPE_AIRCO_BRIDGE, DEVICE_TYPE_RGB
+from .const import (
+    DOMAIN,
+    DEVICE_TYPE_BOILER_CONTROLLER,
+    DEVICE_TYPE_AIRCO_BRIDGE,
+    DEVICE_TYPE_RGB,
+    DEVICE_TYPE_POWER_TEMP,
+)
 from .devices.p1_meter import sensor as p1_meter_sensor
 from .devices.boiler_controller import sensor as boiler_controller_sensor
 from .devices.airco_bridge import sensor as airco_bridge_sensor
 from .devices.rgb import sensor as rgb_sensor
+from .devices.power_temp import sensor as power_temp_sensor
 
 
 async def async_setup_entry(
@@ -22,5 +29,7 @@ async def async_setup_entry(
         await airco_bridge_sensor.async_setup_entry(hass, entry, async_add_entities)
     elif device_type == DEVICE_TYPE_RGB:
         await rgb_sensor.async_setup_entry(hass, entry, async_add_entities)
+    elif device_type == DEVICE_TYPE_POWER_TEMP:
+        await power_temp_sensor.async_setup_entry(hass, entry, async_add_entities)
     else:
         await p1_meter_sensor.async_setup_entry(hass, entry, async_add_entities)
