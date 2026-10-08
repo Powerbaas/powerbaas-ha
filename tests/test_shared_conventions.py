@@ -12,6 +12,7 @@ from custom_components.powerbaas.devices.boiler_controller import const as bc_co
 from custom_components.powerbaas.devices.p1_meter import const as p1_const
 from custom_components.powerbaas.devices.airco_bridge import const as airco_const
 from custom_components.powerbaas.devices.rgb import const as rgb_const
+from custom_components.powerbaas.devices.power_temp import const as power_temp_const
 
 # Each entry: (label, table, unit_index, icon_index)
 _SENSOR_TABLES = [
@@ -25,6 +26,8 @@ _SENSOR_TABLES = [
     ("airco_bridge.DIAGNOSTIC_SENSORS", airco_const.DIAGNOSTIC_SENSORS, 2, 7),
     ("rgb.MAIN_SENSORS", rgb_const.MAIN_SENSORS, 2, 7),
     ("rgb.DIAGNOSTIC_SENSORS", rgb_const.DIAGNOSTIC_SENSORS, 2, 7),
+    ("power_temp.MAIN_SENSORS", power_temp_const.MAIN_SENSORS, 2, 7),
+    ("power_temp.DIAGNOSTIC_SENSORS", power_temp_const.DIAGNOSTIC_SENSORS, 2, 7),
 ]
 
 

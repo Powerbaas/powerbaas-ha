@@ -6,7 +6,7 @@ testing.
 
 ## Repo layout
 
-- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `climate.py`, `light.py`, `switch.py`).
+- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`, `devices/power_temp/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `climate.py`, `light.py`, `switch.py`).
 
 ## Conventions
 
@@ -59,6 +59,11 @@ config/options flow field for it.
 Powerbaas RGB's poll interval is the same kind of fixed default
 (`DEFAULT_POLL_INTERVAL` 10s in `rgb/const.py`) - there is no
 config/options flow field for it.
+
+Powerbaas PowerTemp's poll interval is the same kind of fixed default
+(`DEFAULT_POLL_INTERVAL` 10s in `power_temp/const.py`). The firmware has its
+own `pollIntervalS` setting in `/api/config`, but that's how often the device
+samples its sensors, not how often Home Assistant polls it.
 
 This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real

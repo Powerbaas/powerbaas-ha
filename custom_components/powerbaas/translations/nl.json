@@ -9,7 +9,8 @@
           "p1_meter": "P1 Meter",
           "boiler_controller": "Boiler Controller",
           "airco_bridge": "Airco Bridge",
-          "rgb": "Powerbaas RGB"
+          "rgb": "Powerbaas RGB",
+          "power_temp": "Powerbaas PowerTemp"
         }
       },
       "p1_meter": {
@@ -84,6 +85,20 @@
         "data": {
           "device_url": "Apparaat Basis URL"
         }
+      },
+      "power_temp": {
+        "title": "Powerbaas PowerTemp Instellen",
+        "description": "Stel de Powerbaas PowerTemp integratie in.",
+        "data": {
+          "name": "Integratie Naam"
+        }
+      },
+      "power_temp_device_config": {
+        "title": "Powerbaas PowerTemp Configureren",
+        "description": "Vul de URL of het IP-adres van je Powerbaas PowerTemp in (bijv. {example_url}). Bij automatisch gevonden apparaten wordt dit veld vooringevuld.",
+        "data": {
+          "device_url": "Apparaat Basis URL"
+        }
       }
     },
     "error": {
@@ -98,7 +113,8 @@
       "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_connect_rgb": "Kan geen verbinding maken met de Powerbaas RGB",
       "cannot_identify": "Kan het module ID niet bepalen",
-      "device_in_use": "Deze module is al geconfigureerd"
+      "device_in_use": "Deze module is al geconfigureerd",
+      "cannot_connect_power_temp": "Kan geen verbinding maken met de Powerbaas PowerTemp"
     },
     "abort": {
       "already_configured": "Dit Powerbaas-apparaat is al geconfigureerd",
@@ -158,6 +174,13 @@
         "data": {
           "device_url": "Apparaat Basis URL"
         }
+      },
+      "power_temp_device_config": {
+        "title": "Powerbaas PowerTemp Instellingen Bijwerken",
+        "description": "Pas de Powerbaas PowerTemp URL aan. De huidige URL wordt hier getoond.",
+        "data": {
+          "device_url": "Apparaat Basis URL"
+        }
       }
     },
     "error": {
@@ -172,7 +195,8 @@
       "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_connect_rgb": "Kan geen verbinding maken met de Powerbaas RGB",
       "cannot_identify": "Kan het module ID niet bepalen",
-      "device_in_use": "Deze module is al geconfigureerd"
+      "device_in_use": "Deze module is al geconfigureerd",
+      "cannot_connect_power_temp": "Kan geen verbinding maken met de Powerbaas PowerTemp"
     }
   },
   "entity": {
@@ -210,6 +234,10 @@
     "rgb_offline": {
       "title": "Powerbaas RGB onbereikbaar",
       "description": "De Powerbaas RGB \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. De light-entiteit en sensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    },
+    "power_temp_offline": {
+      "title": "Powerbaas PowerTemp onbereikbaar",
+      "description": "De Powerbaas PowerTemp \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. De temperatuursensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
     }
   }
 }

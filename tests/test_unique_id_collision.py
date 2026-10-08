@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock
 from custom_components.powerbaas.const import (
     CONF_DEVICE_TYPE,
     DEVICE_TYPE_AIRCO_BRIDGE,
+    DEVICE_TYPE_POWER_TEMP,
     DEVICE_TYPE_RGB,
 )
 from custom_components.powerbaas.devices.airco_bridge.config_flow import AircoBridgeFlowMixin
@@ -25,6 +26,9 @@ from custom_components.powerbaas.devices.boiler_controller.config_flow import (
     BoilerControllerFlowMixin,
 )
 from custom_components.powerbaas.devices.p1_meter.config_flow import P1MeterFlowMixin
+from custom_components.powerbaas.devices.power_temp import config_flow as power_temp_flow
+from custom_components.powerbaas.devices.power_temp.config_flow import PowerTempFlowMixin
+from custom_components.powerbaas.devices.power_temp.const import CONF_DEVICE_URL as PT_URL
 from custom_components.powerbaas.devices.rgb.config_flow import RgbFlowMixin
 from custom_components.powerbaas.devices.rgb.const import CONF_DEVICE_URL as RGB_URL
 
@@ -34,6 +38,7 @@ class _CombinedFlow(
     BoilerControllerFlowMixin,
     AircoBridgeFlowMixin,
     RgbFlowMixin,
+    PowerTempFlowMixin,
 ):
     """Same mixin MRO as PowerbaasConfigFlow, without HA's ConfigFlow constructor."""
 
@@ -115,3 +120,18 @@ async def test_rgb_and_airco_proxy_unique_ids_do_not_collide() -> None:
     )
 
     assert rgb.unique_id != airco.unique_id
+
+
+async def test_power_temp_proxy_url_unique_id_includes_port_and_device_type(monkeypatch) -> None:
+    monkeypatch.setattr(power_temp_flow, "_async_test_power_temp_connection", AsyncMock(return_value=True))
+    monkeypatch.setattr(power_temp_flow, "_async_fetch_power_temp_hostname", AsyncMock(return_value=None))
+    flow = _CombinedFlow()
+    flow.data = {CONF_DEVICE_TYPE: DEVICE_TYPE_POWER_TEMP, "name": "PowerTemp"}
+
+    await flow.async_step_power_temp_device_config(
+        {PT_URL: "http://host.docker.internal:18084"}
+    )
+
+    assert flow.created is not None
+    assert flow.created["data"]["device_id"] == "host.docker.internal:18084"
+    assert flow.unique_id == "power_temp:host.docker.internal:18084"
