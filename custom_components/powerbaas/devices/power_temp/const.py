@@ -5,11 +5,14 @@ from ...const import DOMAIN
 CONF_DEVICE_URL = "device_url"
 CONF_DEVICE_ID = "device_id"
 
-# Powerbaas PowerTemp mDNS hostname prefix (pb-pt-<mac>)
+# PowerTemp mDNS hostname prefix (pb-pt-<mac>)
 PT_HOST_PREFIX = ("pb-pt-",)
 
 DEFAULT_POLL_INTERVAL = 10
-DEFAULT_NAME = "Powerbaas PowerTemp"
+DEFAULT_NAME = "PowerTemp"
+# Hub device name; the config entry title (DEFAULT_NAME or user-given) still
+# heads the device group, with the port sub-devices ("Temp N") beside it.
+HUB_DEVICE_NAME = "PowerTemp Manager"
 
 # Firmware AppConfig::kMaxSensors / SensorConfig limits
 MAX_PORTS = 16
@@ -118,9 +121,9 @@ def port_from_device(entry_id: str, device_entry) -> int | None:
 
 
 def port_display_name(port: int, name: str | None) -> str:
-    return name or f"Port {port}"
+    return name or f"Temp {port}"
 
 
 def port_label(port: int, name: str | None) -> str:
     """Option label that stays unambiguous when two sensors share a name."""
-    return f"{name} (port {port})" if name else f"Port {port}"
+    return f"{name} (port {port})" if name else f"Temp {port}"

@@ -10,7 +10,7 @@
           "boiler_controller": "Boiler Controller",
           "airco_bridge": "Airco Bridge",
           "rgb": "Powerbaas RGB",
-          "power_temp": "Powerbaas PowerTemp"
+          "power_temp": "PowerTemp"
         }
       },
       "p1_meter": {
@@ -87,15 +87,15 @@
         }
       },
       "power_temp": {
-        "title": "Setup Powerbaas PowerTemp",
-        "description": "Set up the Powerbaas PowerTemp integration.",
+        "title": "Setup PowerTemp",
+        "description": "Set up the PowerTemp integration.",
         "data": {
           "name": "Integration Name"
         }
       },
       "power_temp_device_config": {
-        "title": "Configure Powerbaas PowerTemp",
-        "description": "Enter the URL or IP address of your Powerbaas PowerTemp (e.g. {example_url}). Auto-discovered devices will pre-fill this field.",
+        "title": "Configure PowerTemp",
+        "description": "Enter the URL or IP address of your PowerTemp (e.g. {example_url}). Auto-discovered devices will pre-fill this field.",
         "data": {
           "device_url": "Device Base URL"
         }
@@ -114,7 +114,7 @@
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured",
-      "cannot_connect_power_temp": "Unable to reach the Powerbaas PowerTemp"
+      "cannot_connect_power_temp": "Unable to reach the PowerTemp"
     },
     "abort": {
       "already_configured": "This Powerbaas device is already configured",
@@ -176,14 +176,14 @@
         }
       },
       "power_temp_device_config": {
-        "title": "Update Powerbaas PowerTemp Settings",
-        "description": "Adjust the Powerbaas PowerTemp URL. The current URL is shown here.",
+        "title": "Update PowerTemp Settings",
+        "description": "Adjust the PowerTemp URL. The current URL is shown here.",
         "data": {
           "device_url": "Device Base URL"
         }
       },
       "power_temp_init": {
-        "title": "Powerbaas PowerTemp options",
+        "title": "PowerTemp options",
         "menu_options": {
           "power_temp_device_config": "Device URL",
           "power_temp_sensors": "Manage sensors"
@@ -220,7 +220,7 @@
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured",
-      "cannot_connect_power_temp": "Unable to reach the Powerbaas PowerTemp",
+      "cannot_connect_power_temp": "Unable to reach the PowerTemp",
       "name_too_long": "The name is too long (max 31 bytes)",
       "cannot_save": "The device rejected the change or couldn't be reached"
     },
@@ -266,8 +266,8 @@
       "description": "The Powerbaas RGB \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its light entity and sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
     },
     "power_temp_offline": {
-      "title": "Powerbaas PowerTemp unreachable",
-      "description": "The Powerbaas PowerTemp \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its temperature sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
+      "title": "PowerTemp unreachable",
+      "description": "The PowerTemp \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its temperature sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
     },
     "power_temp_new_sensor": {
       "title": "New sensor found on {name} port {port}",

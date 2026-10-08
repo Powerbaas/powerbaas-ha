@@ -23,7 +23,7 @@ def _coordinator(ports: dict, *, online: bool = True, status: str = "ok"):
     return SimpleNamespace(
         data={"sensors": {"status": status}, "system": {}, "config": {}, "ports": ports},
         device_online=online,
-        device_name="Powerbaas PowerTemp",
+        device_name="PowerTemp",
         device_url="http://pt.local",
         known_ports=set(),
         ignored_ports=set(),
@@ -47,16 +47,16 @@ def test_port_sub_device_is_named_after_sensor_and_linked_to_hub() -> None:
     assert info["name"] == "Groep 3"
     assert info["identifiers"] == {(DOMAIN, "pt_entry_port_3")}
     assert info["via_device"] == (DOMAIN, "pt_entry")
-    assert port_device_info(coordinator, entry, 4)["name"] == "Port 4"
+    assert port_device_info(coordinator, entry, 4)["name"] == "Temp 4"
 
 
-def test_port_temperature_is_main_entity_of_sub_device() -> None:
+def test_port_temperature_entity() -> None:
     coordinator = _coordinator(
         {3: {"port": 3, "name": "Groep 3", "celsius": 31.2, "status": "warning", "type": "ds18b20"}}
     )
     entity = _port_entity(PowerTempPortTemperatureSensor, coordinator, 3)
 
-    assert entity._attr_name is None
+    assert entity._attr_name == "Temperature"
     assert entity.available is True
     assert entity.native_value == 31.2
     assert entity.extra_state_attributes["status"] == "warning"

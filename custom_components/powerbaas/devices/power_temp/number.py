@@ -1,4 +1,4 @@
-"""Number entities for the Powerbaas PowerTemp (alarm thresholds)."""
+"""Number entities for the PowerTemp (alarm thresholds)."""
 from __future__ import annotations
 
 from homeassistant.components.number import NumberEntity, NumberMode

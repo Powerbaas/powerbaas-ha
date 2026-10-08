@@ -1,4 +1,4 @@
-"""Sensor entities for the Powerbaas PowerTemp."""
+"""Sensor entities for the PowerTemp."""
 from __future__ import annotations
 
 from typing import Any
@@ -205,12 +205,9 @@ class _PowerTempPortEntity(CoordinatorEntity, SensorEntity):
 
 
 class PowerTempPortTemperatureSensor(_PowerTempPortEntity):
-    """Temperature measured on one port (offset already applied by firmware).
+    """Temperature measured on one port (offset already applied by firmware)."""
 
-    The sub-device's main entity, so it takes the device's name.
-    """
-
-    _attr_name = None
+    _attr_name = "Temperature"
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS

@@ -1,4 +1,4 @@
-"""Tests for the Powerbaas PowerTemp async_setup_entry (coordinator wiring, offline detection, new-sensor issues)."""
+"""Tests for the PowerTemp async_setup_entry (coordinator wiring, offline detection, new-sensor issues)."""
 
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ def _make_entry(hass):
             CONF_DEVICE_URL: "http://pt.local",
             "device_id": "pb-pt-aabbccddeeff",
         },
-        title="Powerbaas PowerTemp",
+        title="PowerTemp",
     )
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.SETUP_IN_PROGRESS)
