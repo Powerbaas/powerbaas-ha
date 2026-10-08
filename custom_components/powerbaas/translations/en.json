@@ -181,6 +181,30 @@
         "data": {
           "device_url": "Device Base URL"
         }
+      },
+      "power_temp_init": {
+        "title": "Powerbaas PowerTemp options",
+        "menu_options": {
+          "power_temp_device_config": "Device URL",
+          "power_temp_sensors": "Manage sensors"
+        }
+      },
+      "power_temp_sensors": {
+        "title": "Manage sensors",
+        "description": "Pick a sensor to rename, calibrate, disable or remove. Newly detected sensors show up under Settings → System → Repairs instead.",
+        "data": {
+          "port": "Sensor"
+        }
+      },
+      "power_temp_sensor": {
+        "title": "Sensor on port {port}",
+        "description": "The offset is added to every reading (calibration). A disabled sensor is still read but never raises a warning, alarm or missing status. Removing a sensor that's still plugged in turns it back into a newly detected sensor.",
+        "data": {
+          "name": "Name",
+          "offset_c": "Offset (°C, -10 to 10)",
+          "enabled": "Enabled",
+          "remove": "Remove this sensor from the device config"
+        }
       }
     },
     "error": {
@@ -196,7 +220,13 @@
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured",
-      "cannot_connect_power_temp": "Unable to reach the Powerbaas PowerTemp"
+      "cannot_connect_power_temp": "Unable to reach the Powerbaas PowerTemp",
+      "name_too_long": "The name is too long (max 31 bytes)",
+      "cannot_save": "The device rejected the change or couldn't be reached"
+    },
+    "abort": {
+      "device_unavailable": "The device isn't loaded right now. Check that it's online and try again.",
+      "no_sensors": "No sensors are configured on this device yet. New sensors show up under Settings → System → Repairs."
     }
   },
   "entity": {
@@ -238,6 +268,28 @@
     "power_temp_offline": {
       "title": "Powerbaas PowerTemp unreachable",
       "description": "The Powerbaas PowerTemp \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its temperature sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
+    },
+    "power_temp_new_sensor": {
+      "title": "New sensor found on {name} port {port}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "New sensor on port {port}",
+            "description": "A {sensor_type} sensor was detected on port {port} of \"{name}\" (currently {temperature}). Give it a name to add it to the device config: until then it isn't reported as missing if it stops working.",
+            "data": {
+              "name": "Name",
+              "offset_c": "Offset (°C, -10 to 10)"
+            }
+          }
+        },
+        "error": {
+          "name_too_long": "The name is too long (max 31 bytes)",
+          "cannot_save": "The device rejected the change or couldn't be reached"
+        },
+        "abort": {
+          "device_unavailable": "The device isn't loaded right now. Check that it's online and try again."
+        }
+      }
     }
   }
 }

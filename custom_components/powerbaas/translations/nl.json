@@ -181,6 +181,30 @@
         "data": {
           "device_url": "Apparaat Basis URL"
         }
+      },
+      "power_temp_init": {
+        "title": "Powerbaas PowerTemp opties",
+        "menu_options": {
+          "power_temp_device_config": "Apparaat-URL",
+          "power_temp_sensors": "Sensoren beheren"
+        }
+      },
+      "power_temp_sensors": {
+        "title": "Sensoren beheren",
+        "description": "Kies een sensor om te hernoemen, te kalibreren, uit te schakelen of te verwijderen. Nieuw gevonden sensoren verschijnen in plaats daarvan onder Instellingen → Systeem → Reparaties.",
+        "data": {
+          "port": "Sensor"
+        }
+      },
+      "power_temp_sensor": {
+        "title": "Sensor op poort {port}",
+        "description": "De offset wordt bij elke meting opgeteld (kalibratie). Een uitgeschakelde sensor wordt nog wel uitgelezen, maar geeft nooit een waarschuwing, alarm of 'missing'-status. Verwijder je een sensor die nog is aangesloten, dan wordt hij weer een nieuw gevonden sensor.",
+        "data": {
+          "name": "Naam",
+          "offset_c": "Offset (°C, -10 tot 10)",
+          "enabled": "Ingeschakeld",
+          "remove": "Verwijder deze sensor uit de apparaatconfiguratie"
+        }
       }
     },
     "error": {
@@ -196,7 +220,13 @@
       "cannot_connect_rgb": "Kan geen verbinding maken met de Powerbaas RGB",
       "cannot_identify": "Kan het module ID niet bepalen",
       "device_in_use": "Deze module is al geconfigureerd",
-      "cannot_connect_power_temp": "Kan geen verbinding maken met de Powerbaas PowerTemp"
+      "cannot_connect_power_temp": "Kan geen verbinding maken met de Powerbaas PowerTemp",
+      "name_too_long": "De naam is te lang (max. 31 bytes)",
+      "cannot_save": "Het apparaat heeft de wijziging geweigerd of is niet bereikbaar"
+    },
+    "abort": {
+      "device_unavailable": "Het apparaat is nu niet geladen. Controleer of het online is en probeer het opnieuw.",
+      "no_sensors": "Er zijn nog geen sensoren geconfigureerd op dit apparaat. Nieuwe sensoren verschijnen onder Instellingen → Systeem → Reparaties."
     }
   },
   "entity": {
@@ -238,6 +268,28 @@
     "power_temp_offline": {
       "title": "Powerbaas PowerTemp onbereikbaar",
       "description": "De Powerbaas PowerTemp \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. De temperatuursensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    },
+    "power_temp_new_sensor": {
+      "title": "Nieuwe sensor gevonden op {name} poort {port}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Nieuwe sensor op poort {port}",
+            "description": "Er is een {sensor_type}-sensor gevonden op poort {port} van \"{name}\" (nu {temperature}). Geef hem een naam om hem aan de apparaatconfiguratie toe te voegen: tot die tijd wordt hij niet als 'missing' gemeld als hij uitvalt.",
+            "data": {
+              "name": "Naam",
+              "offset_c": "Offset (°C, -10 tot 10)"
+            }
+          }
+        },
+        "error": {
+          "name_too_long": "De naam is te lang (max. 31 bytes)",
+          "cannot_save": "Het apparaat heeft de wijziging geweigerd of is niet bereikbaar"
+        },
+        "abort": {
+          "device_unavailable": "Het apparaat is nu niet geladen. Controleer of het online is en probeer het opnieuw."
+        }
+      }
     }
   }
 }
