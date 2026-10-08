@@ -14,7 +14,17 @@ from ...const import (
     DEVICE_TYPE_POWER_TEMP,
     config_entry_unique_id,
 )
-from .const import PT_HOST_PREFIX, CONF_DEVICE_ID, CONF_DEVICE_URL, DEFAULT_NAME
+from .client import PowerTempCommandError
+from .const import (
+    PT_HOST_PREFIX,
+    CONF_DEVICE_ID,
+    CONF_DEVICE_URL,
+    DEFAULT_NAME,
+    OFFSET_MAX_C,
+    OFFSET_MIN_C,
+    SENSOR_NAME_MAX_BYTES,
+    port_label,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -107,6 +117,35 @@ async def _async_power_temp_device_id(hass, url: str, hostname: str | None = Non
     if hostname:
         return _short_hostname(hostname)
     return _device_id_from_url(url) if url else None
+
+
+def sensor_schema(
+    name: str, offset_c: float, enabled: bool | None = None, *, removable: bool = False
+) -> vol.Schema:
+    """Form for one port's sensor config; shared by the options and repair flows."""
+    fields = {
+        vol.Optional("name", default=name): str,
+        vol.Required("offset_c", default=offset_c): vol.All(
+            vol.Coerce(float), vol.Range(min=OFFSET_MIN_C, max=OFFSET_MAX_C)
+        ),
+    }
+    if enabled is not None:
+        fields[vol.Required("enabled", default=enabled)] = bool
+    if removable:
+        fields[vol.Required("remove", default=False)] = bool
+    return vol.Schema(fields)
+
+
+def validate_sensor_input(user_input: dict) -> dict[str, str]:
+    name = (user_input.get("name") or "").strip()
+    if len(name.encode()) > SENSOR_NAME_MAX_BYTES:
+        return {"name": "name_too_long"}
+    return {}
+
+
+def coordinator_for_entry(hass, entry_id: str):
+    """The running coordinator, or None while the entry isn't loaded (e.g. device offline at startup)."""
+    return (hass.data.get(DOMAIN, {}).get(entry_id) or {}).get("coordinator")
 
 
 class PowerTempFlowMixin:
@@ -203,17 +242,90 @@ class PowerTempFlowMixin:
 
 
 class PowerTempOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Powerbaas PowerTemp (device URL only)."""
+    """Handle options flow for Powerbaas PowerTemp: device URL and per-port sensor config."""
 
     def __init__(self, config_entry):
         super().__init__()
         self._config_entry = config_entry
 
     async def async_step_power_temp_init(self, user_input=None):
-        """Mandatory HA entry point; has no form of its own."""
-        return await self.async_step_power_temp_device_config(user_input)
+        """Mandatory HA entry point: choose between URL and sensor settings."""
+        return self.async_show_menu(
+            step_id="power_temp_init",
+            menu_options=["power_temp_device_config", "power_temp_sensors"],
+        )
 
     async_step_init = async_step_power_temp_init
+
+    async def async_step_power_temp_sensors(self, user_input=None):
+        """Pick a configured sensor to edit or remove.
+
+        Newly detected sensors aren't listed here: they're adopted via the
+        "new sensor found" repair issue the coordinator raises for them.
+        """
+        coordinator = coordinator_for_entry(self.hass, self._config_entry.entry_id)
+        if coordinator is None:
+            return self.async_abort(reason="device_unavailable")
+
+        ports = (coordinator.data or {}).get("ports") or {}
+        choices = {
+            str(sensor["port"]): port_label(
+                sensor["port"], (ports.get(sensor["port"]) or {}).get("name") or sensor.get("name")
+            )
+            for sensor in (coordinator.data or {}).get("config", {}).get("sensors") or []
+            if isinstance(sensor.get("port"), int)
+        }
+        if not choices:
+            return self.async_abort(reason="no_sensors")
+
+        if user_input is not None:
+            self._port = int(user_input["port"])
+            return await self.async_step_power_temp_sensor()
+
+        return self.async_show_form(
+            step_id="power_temp_sensors",
+            data_schema=vol.Schema({vol.Required("port"): vol.In(choices)}),
+        )
+
+    async def async_step_power_temp_sensor(self, user_input=None):
+        """Edit (or remove) one configured sensor."""
+        coordinator = coordinator_for_entry(self.hass, self._config_entry.entry_id)
+        if coordinator is None:
+            return self.async_abort(reason="device_unavailable")
+
+        errors = {}
+        sensor = coordinator.configured_sensor(self._port) or {}
+        if user_input is not None:
+            errors = validate_sensor_input(user_input)
+            if not errors:
+                try:
+                    if user_input.get("remove"):
+                        await coordinator.async_remove_sensor(self._port)
+                    else:
+                        await coordinator.async_save_sensor(
+                            self._port,
+                            name=(user_input.get("name") or "").strip(),
+                            offset_c=user_input["offset_c"],
+                            enabled=user_input["enabled"],
+                        )
+                except PowerTempCommandError as err:
+                    _LOGGER.warning("Saving PowerTemp port %s failed: %s", self._port, err.code)
+                    errors["base"] = "cannot_save"
+                else:
+                    return self.async_create_entry(title="", data=dict(self._config_entry.options))
+            sensor = {**sensor, **user_input}
+
+        return self.async_show_form(
+            step_id="power_temp_sensor",
+            data_schema=sensor_schema(
+                sensor.get("name", ""),
+                sensor.get("offset_c", sensor.get("offsetC", 0.0)),
+                sensor.get("enabled", True),
+                removable=True,
+            ),
+            errors=errors,
+            description_placeholders={"port": str(self._port)},
+        )
 
     async def async_step_power_temp_device_config(self, user_input=None):
         """Ask for/update the Powerbaas PowerTemp URL."""
