@@ -1,0 +1,123 @@
+"""Powerbaas PowerTemp (meter cabinet temperature monitor) support."""
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import issue_registry
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
+from .client import PowerTempClient
+from .const import CONF_DEVICE_URL, DEFAULT_POLL_INTERVAL
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class PowerTempCoordinator(DataUpdateCoordinator):
+    """Poll /api/sensors and /api/system, with the shared offline grace period."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        client: PowerTempClient,
+        device_name: str,
+    ) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_power_temp",
+            update_interval=timedelta(seconds=DEFAULT_POLL_INTERVAL),
+        )
+        self.client = client
+        self.config_entry = entry
+        self.device_name = device_name
+        self.device_url = client.base_url
+        self.device_online = True
+        self._consecutive_failures = 0
+        self._offline_issue_id = f"power_temp_offline_{entry.entry_id}"
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        sensors = await self.client.async_get_sensors()
+        if sensors is None:
+            self._register_failure()
+            raise UpdateFailed(
+                f"Powerbaas PowerTemp sensors request failed for {self.device_name}"
+            )
+
+        self._register_success()
+        system = await self.client.async_get_system()
+        return {
+            "sensors": sensors,
+            "system": system or {},
+            # Ports come and go (a new sensor plugged in, an unconfigured
+            # one unplugged), so index them by port number for entities.
+            "ports": {
+                item["port"]: item
+                for item in sensors.get("temperatures") or []
+                if isinstance(item, dict) and isinstance(item.get("port"), int)
+            },
+        }
+
+    def _register_failure(self) -> None:
+        self._consecutive_failures += 1
+        if self._consecutive_failures == OFFLINE_AFTER_CONSECUTIVE_FAILURES:
+            self.device_online = False
+            _LOGGER.warning(
+                "Powerbaas PowerTemp offline for %s after %s consecutive failed fetches",
+                self.device_name,
+                self._consecutive_failures,
+            )
+            issue_registry.async_create_issue(
+                self.hass,
+                DOMAIN,
+                self._offline_issue_id,
+                is_fixable=False,
+                severity=issue_registry.IssueSeverity.WARNING,
+                translation_key="power_temp_offline",
+                translation_placeholders={"name": self.device_name},
+            )
+            # DataUpdateCoordinator only notifies listeners on the first
+            # failed refresh after a success - see CLAUDE.md.
+            self.async_update_listeners()
+
+    def _register_success(self) -> None:
+        if self._consecutive_failures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES:
+            self.device_online = True
+            issue_registry.async_delete_issue(self.hass, DOMAIN, self._offline_issue_id)
+            self.async_update_listeners()
+        self._consecutive_failures = 0
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
+    """Set up a Powerbaas PowerTemp device and return its runtime data."""
+    device_url = entry.data.get(CONF_DEVICE_URL)
+    if not device_url:
+        raise ConfigEntryNotReady("No device URL configured for Powerbaas PowerTemp.")
+
+    device_name = entry.title or "Powerbaas PowerTemp"
+    client = PowerTempClient(hass, device_url)
+
+    if not await client.async_test_connection():
+        raise ConfigEntryNotReady(
+            f"Device communication error occurred for {device_name}"
+        )
+
+    coordinator = PowerTempCoordinator(hass, entry, client, device_name)
+    await coordinator.async_config_entry_first_refresh()
+
+    return {
+        "coordinator": coordinator,
+        "name": device_name,
+        "device_url": client.base_url,
+    }
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Clear any open offline repair issue; platform unload is handled by the caller."""
+    issue_registry.async_delete_issue(hass, DOMAIN, f"power_temp_offline_{entry.entry_id}")

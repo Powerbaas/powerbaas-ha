@@ -3,7 +3,7 @@
 Adding a device starts with a menu asking which kind of Powerbaas device is
 being set up. Each device type's own steps live in its own package under
 ``devices/`` (see P1MeterFlowMixin / BoilerControllerFlowMixin /
-AircoBridgeFlowMixin / RgbFlowMixin) and are mixed into this single
+AircoBridgeFlowMixin / RgbFlowMixin / PowerTempFlowMixin) and are mixed into this single
 ConfigFlow class, since Home Assistant only allows one ConfigFlow per domain.
 """
 import logging
@@ -19,6 +19,7 @@ from .const import (
     DEVICE_TYPE_BOILER_CONTROLLER,
     DEVICE_TYPE_AIRCO_BRIDGE,
     DEVICE_TYPE_RGB,
+    DEVICE_TYPE_POWER_TEMP,
     DISABLED_DEVICE_TYPES,
 )
 from .devices.p1_meter.config_flow import P1MeterFlowMixin, P1MeterOptionsFlow
@@ -35,6 +36,8 @@ from .devices.airco_bridge.config_flow import (
 from .devices.airco_bridge.const import AIRCO_HOST_PREFIX
 from .devices.rgb.config_flow import RgbFlowMixin, RgbOptionsFlow
 from .devices.rgb.const import RGB_HOST_PREFIX
+from .devices.power_temp.config_flow import PowerTempFlowMixin, PowerTempOptionsFlow
+from .devices.power_temp.const import PT_HOST_PREFIX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +47,7 @@ class PowerbaasConfigFlow(
     BoilerControllerFlowMixin,
     AircoBridgeFlowMixin,
     RgbFlowMixin,
+    PowerTempFlowMixin,
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):
@@ -58,6 +62,7 @@ class PowerbaasConfigFlow(
                 DEVICE_TYPE_BOILER_CONTROLLER,
                 DEVICE_TYPE_AIRCO_BRIDGE,
                 DEVICE_TYPE_RGB,
+                DEVICE_TYPE_POWER_TEMP,
             )
             if device_type not in DISABLED_DEVICE_TYPES
         ]
@@ -72,7 +77,8 @@ class PowerbaasConfigFlow(
         Only one class in the MRO can own ``async_step_zeroconf``, so each
         device type's mixin exposes a private handler instead
         (``_async_zeroconf_boiler_controller`` / ``_async_zeroconf_airco_bridge``
-        / ``_async_zeroconf_rgb`` / ``_async_zeroconf_p1_meter``) and this
+        / ``_async_zeroconf_rgb`` / ``_async_zeroconf_power_temp`` /
+        ``_async_zeroconf_p1_meter``) and this
         method dispatches to the right one based on hostname. Handlers call
         self.async_set_unique_id(...) before creating an entry (hassfest only
         greps this file for that call, so it's noted here to avoid a
@@ -92,6 +98,10 @@ class PowerbaasConfigFlow(
             if DEVICE_TYPE_RGB in DISABLED_DEVICE_TYPES:
                 return self.async_abort(reason="unsupported_device")
             return await self._async_zeroconf_rgb(discovery_info)
+        if any(hostname.startswith(prefix) for prefix in PT_HOST_PREFIX):
+            if DEVICE_TYPE_POWER_TEMP in DISABLED_DEVICE_TYPES:
+                return self.async_abort(reason="unsupported_device")
+            return await self._async_zeroconf_power_temp(discovery_info)
         if hostname == P1_MDNS_HOSTNAME:
             if DEVICE_TYPE_P1_METER in DISABLED_DEVICE_TYPES:
                 return self.async_abort(reason="unsupported_device")
@@ -109,4 +119,6 @@ class PowerbaasConfigFlow(
             return AircoBridgeOptionsFlow(config_entry)
         if device_type == DEVICE_TYPE_RGB:
             return RgbOptionsFlow(config_entry)
+        if device_type == DEVICE_TYPE_POWER_TEMP:
+            return PowerTempOptionsFlow(config_entry)
         return P1MeterOptionsFlow()
