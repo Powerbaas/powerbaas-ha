@@ -11,18 +11,20 @@ DEVICE_TYPE_P1_METER = "p1_meter"
 DEVICE_TYPE_BOILER_CONTROLLER = "boiler_controller"
 DEVICE_TYPE_AIRCO_BRIDGE = "airco_bridge"
 DEVICE_TYPE_RGB = "rgb"
+DEVICE_TYPE_POWER_TEMP = "power_temp"
 DEVICE_TYPES = [
     DEVICE_TYPE_P1_METER,
     DEVICE_TYPE_BOILER_CONTROLLER,
     DEVICE_TYPE_AIRCO_BRIDGE,
     DEVICE_TYPE_RGB,
+    DEVICE_TYPE_POWER_TEMP,
 ]
 
 # Device types hidden from the "add device" menu and zeroconf discovery while
 # still under development. Config entries that already exist for a type in
 # here keep working normally - this only blocks *newly adding* that type.
 # Remove a type from this set once it's ready for general release.
-DISABLED_DEVICE_TYPES = set()
+DISABLED_DEVICE_TYPES = {DEVICE_TYPE_POWER_TEMP}
 
 # Consecutive failed device polls/fetches (Boiler Controller's /api/status,
 # a P1 meter's API request, ...) before a device is considered offline:
