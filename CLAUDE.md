@@ -60,7 +60,7 @@ Powerbaas RGB's poll interval is the same kind of fixed default
 (`DEFAULT_POLL_INTERVAL` 10s in `rgb/const.py`) - there is no
 config/options flow field for it.
 
-Powerbaas PowerTemp's poll interval is the same kind of fixed default
+PowerTemp's poll interval is the same kind of fixed default
 (`DEFAULT_POLL_INTERVAL` 10s in `power_temp/const.py`). The firmware has its
 own `pollIntervalS` setting in `/api/config`, but that's how often the device
 samples its sensors, not how often Home Assistant polls it.

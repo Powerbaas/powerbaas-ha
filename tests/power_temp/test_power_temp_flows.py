@@ -15,7 +15,7 @@ from custom_components.powerbaas.repairs import async_create_fix_flow
 def _coordinator():
     configured = {"port": 1, "name": "Groep 1", "offsetC": 0.5, "enabled": True, "ambient": False}
     return SimpleNamespace(
-        device_name="Powerbaas PowerTemp",
+        device_name="PowerTemp",
         data={
             "config": {"sensors": [configured]},
             "ports": {
