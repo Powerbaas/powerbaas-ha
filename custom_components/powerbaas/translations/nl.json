@@ -273,7 +273,7 @@
       "title": "Nieuwe sensor gevonden op {name} poort {port}",
       "fix_flow": {
         "step": {
-          "init": {
+          "adopt": {
             "title": "Nieuwe sensor op poort {port}",
             "description": "Er is een {sensor_type}-sensor gevonden op poort {port} van \"{name}\" (nu {temperature}). Geef hem een naam om hem aan de apparaatconfiguratie toe te voegen: tot die tijd wordt hij niet als 'missing' gemeld als hij uitvalt.",
             "data": {

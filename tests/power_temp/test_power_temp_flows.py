@@ -51,11 +51,15 @@ async def test_fix_flow_routes_new_sensor_issue() -> None:
 
 
 async def test_repair_flow_shows_detected_sensor() -> None:
-    flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass(_coordinator()))
+    coordinator = _coordinator()
+    flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass(coordinator))
 
-    result = await flow.async_step_init()
+    # The repairs flow manager opens the flow with the issue_id as init-step input.
+    result = await flow.async_step_init({"issue_id": "power_temp_new_sensor_pt_entry_5"})
 
     assert result["type"] == "form"
+    assert result["step_id"] == "adopt"
+    coordinator.async_save_sensor.assert_not_awaited()
     assert result["description_placeholders"]["sensor_type"] == "ntc"
     assert result["description_placeholders"]["temperature"] == "30.1 °C"
 
@@ -64,7 +68,7 @@ async def test_repair_flow_adopts_sensor() -> None:
     coordinator = _coordinator()
     flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass(coordinator))
 
-    result = await flow.async_step_init({"name": " Groep 5 ", "offset_c": -0.2})
+    result = await flow.async_step_adopt({"name": " Groep 5 ", "offset_c": -0.2})
 
     assert result["type"] == "create_entry"
     coordinator.async_save_sensor.assert_awaited_once_with(5, name="Groep 5", offset_c=-0.2, enabled=True)
@@ -74,7 +78,7 @@ async def test_repair_flow_rejects_too_long_name() -> None:
     coordinator = _coordinator()
     flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass(coordinator))
 
-    result = await flow.async_step_init({"name": "x" * 32, "offset_c": 0})
+    result = await flow.async_step_adopt({"name": "x" * 32, "offset_c": 0})
 
     assert result["errors"] == {"name": "name_too_long"}
     coordinator.async_save_sensor.assert_not_awaited()
@@ -85,7 +89,7 @@ async def test_repair_flow_reports_device_rejection() -> None:
     coordinator.async_save_sensor.side_effect = PowerTempCommandError("too_many_sensors")
     flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass(coordinator))
 
-    result = await flow.async_step_init({"name": "Groep 5", "offset_c": 0})
+    result = await flow.async_step_adopt({"name": "Groep 5", "offset_c": 0})
 
     assert result["errors"] == {"base": "cannot_save"}
 
@@ -93,7 +97,7 @@ async def test_repair_flow_reports_device_rejection() -> None:
 async def test_repair_flow_aborts_when_entry_not_loaded() -> None:
     flow = _prepare(PowerTempNewSensorRepairFlow("pt_entry", 5), _hass())
 
-    result = await flow.async_step_init()
+    result = await flow.async_step_init({"issue_id": "power_temp_new_sensor_pt_entry_5"})
 
     assert result["type"] == "abort"
     assert result["reason"] == "device_unavailable"

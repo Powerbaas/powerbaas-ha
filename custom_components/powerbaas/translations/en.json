@@ -273,7 +273,7 @@
       "title": "New sensor found on {name} port {port}",
       "fix_flow": {
         "step": {
-          "init": {
+          "adopt": {
             "title": "New sensor on port {port}",
             "description": "A {sensor_type} sensor was detected on port {port} of \"{name}\" (currently {temperature}). Give it a name to add it to the device config: until then it isn't reported as missing if it stops working.",
             "data": {
