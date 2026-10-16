@@ -16,6 +16,22 @@ from ...const import (
     DEVICE_TYPE_P1_METER,
 )
 from .const import (
+    BATTERY_SENSOR_TYPE_NET,
+    BATTERY_SENSOR_TYPE_NONE,
+    BATTERY_SENSOR_TYPE_SPLIT,
+    BATTERY_SENSOR_TYPES,
+    CONF_BATTERY_CHARGE_NEGATIVE,
+    CONF_BATTERY_CHARGE_SENSOR,
+    CONF_BATTERY_DISCHARGE_SENSOR,
+    CONF_BATTERY_FULL_SOC,
+    CONF_BATTERY_MAX_CHARGE_WATTS,
+    CONF_BATTERY_POWER_SENSOR,
+    CONF_BATTERY_SENSOR_TYPE,
+    CONF_BATTERY_SOC_SENSOR,
+    CONF_SAFETY_MARGIN_WATTS,
+    DEFAULT_BATTERY_FULL_SOC,
+    DEFAULT_BATTERY_MAX_CHARGE_WATTS,
+    DEFAULT_SAFETY_MARGIN_WATTS,
     CONF_POWER_SENSOR,
     CONF_POWER_SENSOR_TYPE,
     CONF_RETURN_SENSOR,
@@ -194,7 +210,171 @@ class DeviceValidationMixin:
         )
 
 
-class BoilerControllerFlowMixin(DeviceValidationMixin):
+# Cleared when "No home battery" is picked.
+_BATTERY_KEYS = (
+    CONF_BATTERY_POWER_SENSOR,
+    CONF_BATTERY_CHARGE_NEGATIVE,
+    CONF_BATTERY_CHARGE_SENSOR,
+    CONF_BATTERY_DISCHARGE_SENSOR,
+    CONF_BATTERY_SOC_SENSOR,
+    CONF_BATTERY_FULL_SOC,
+    CONF_BATTERY_MAX_CHARGE_WATTS,
+)
+
+
+def _watts_selector(max_watts: int) -> selector.NumberSelector:
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=0, max=max_watts, step=10, unit_of_measurement="W",
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _optional_with_default(key: str, default) -> vol.Optional:
+    """vol.Optional with a suggested value only when there is one.
+
+    An EntitySelector can't be cleared again once given a vol default, so
+    the current value is passed as a suggestion instead.
+    """
+    if default:
+        return vol.Optional(key, description={"suggested_value": default})
+    return vol.Optional(key)
+
+
+class BatteryPriorityStepsMixin:
+    """Battery-priority steps shared by the config and options flows.
+
+    Runs after the power sensor step. Subclasses provide
+    ``_battery_current()`` (values to prefill) and ``_battery_done()``
+    (create or update the entry); answers accumulate in ``self.data``.
+    """
+
+    def _battery_current(self) -> dict:
+        raise NotImplementedError
+
+    async def _battery_done(self):
+        raise NotImplementedError
+
+    def _battery_settings_schema(self, current: dict) -> dict:
+        """SoC sensor and charge limits, shown only once a battery is picked."""
+        return {
+            _optional_with_default(
+                CONF_BATTERY_SOC_SENSOR, current.get(CONF_BATTERY_SOC_SENSOR)
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            vol.Required(
+                CONF_BATTERY_FULL_SOC,
+                default=current.get(CONF_BATTERY_FULL_SOC, DEFAULT_BATTERY_FULL_SOC),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=50, max=100, step=1, unit_of_measurement="%",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_BATTERY_MAX_CHARGE_WATTS,
+                default=current.get(CONF_BATTERY_MAX_CHARGE_WATTS, DEFAULT_BATTERY_MAX_CHARGE_WATTS),
+            ): _watts_selector(10000),
+        }
+
+    def _store_battery_settings(self, user_input: dict) -> None:
+        self.data[CONF_BATTERY_SOC_SENSOR] = user_input.get(CONF_BATTERY_SOC_SENSOR)
+        self.data[CONF_BATTERY_FULL_SOC] = int(user_input[CONF_BATTERY_FULL_SOC])
+        self.data[CONF_BATTERY_MAX_CHARGE_WATTS] = int(user_input[CONF_BATTERY_MAX_CHARGE_WATTS])
+
+    async def async_step_battery_priority(self, user_input=None):
+        """Pick the battery sensor flavour (or none) and the safety margin.
+
+        Battery-only settings live on the follow-up sensor step, since a
+        form can't hide fields depending on another field's value.
+        """
+        current = self._battery_current()
+
+        if user_input is not None:
+            battery_type = user_input[CONF_BATTERY_SENSOR_TYPE]
+            self.data[CONF_BATTERY_SENSOR_TYPE] = battery_type
+            self.data[CONF_SAFETY_MARGIN_WATTS] = int(user_input[CONF_SAFETY_MARGIN_WATTS])
+            if battery_type == BATTERY_SENSOR_TYPE_NET:
+                return await self.async_step_battery_sensor_net()
+            if battery_type == BATTERY_SENSOR_TYPE_SPLIT:
+                return await self.async_step_battery_sensor_split()
+            for key in _BATTERY_KEYS:
+                self.data[key] = None
+            return await self._battery_done()
+
+        current_type = current.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_SENSOR_TYPE_NONE)
+        if current_type not in BATTERY_SENSOR_TYPES:
+            current_type = BATTERY_SENSOR_TYPE_NONE
+        schema = vol.Schema({
+            vol.Required(CONF_BATTERY_SENSOR_TYPE, default=current_type): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=BATTERY_SENSOR_TYPES,
+                    mode=selector.SelectSelectorMode.LIST,
+                    translation_key=CONF_BATTERY_SENSOR_TYPE,
+                )
+            ),
+            vol.Required(
+                CONF_SAFETY_MARGIN_WATTS,
+                default=current.get(CONF_SAFETY_MARGIN_WATTS, DEFAULT_SAFETY_MARGIN_WATTS),
+            ): _watts_selector(1000),
+        })
+        return self.async_show_form(step_id="battery_priority", data_schema=schema)
+
+    async def async_step_battery_sensor_net(self, user_input=None):
+        """Pick a single signed battery power sensor, SoC and limits."""
+        current = self._battery_current()
+
+        if user_input is not None:
+            self.data[CONF_BATTERY_POWER_SENSOR] = user_input[CONF_BATTERY_POWER_SENSOR]
+            self.data[CONF_BATTERY_CHARGE_NEGATIVE] = bool(user_input[CONF_BATTERY_CHARGE_NEGATIVE])
+            self.data[CONF_BATTERY_CHARGE_SENSOR] = None
+            self.data[CONF_BATTERY_DISCHARGE_SENSOR] = None
+            self._store_battery_settings(user_input)
+            return await self._battery_done()
+
+        schema = vol.Schema({
+            self._required_with_default(
+                CONF_BATTERY_POWER_SENSOR, current.get(CONF_BATTERY_POWER_SENSOR)
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            vol.Required(
+                CONF_BATTERY_CHARGE_NEGATIVE,
+                default=bool(current.get(CONF_BATTERY_CHARGE_NEGATIVE, False)),
+            ): selector.BooleanSelector(),
+            **self._battery_settings_schema(current),
+        })
+        return self.async_show_form(step_id="battery_sensor_net", data_schema=schema)
+
+    async def async_step_battery_sensor_split(self, user_input=None):
+        """Pick separate battery charge and discharge sensors, SoC and limits."""
+        errors = {}
+        current = self._battery_current()
+
+        if user_input is not None:
+            if user_input[CONF_BATTERY_CHARGE_SENSOR] == user_input[CONF_BATTERY_DISCHARGE_SENSOR]:
+                errors[CONF_BATTERY_DISCHARGE_SENSOR] = "sensors_must_differ"
+            else:
+                self.data[CONF_BATTERY_CHARGE_SENSOR] = user_input[CONF_BATTERY_CHARGE_SENSOR]
+                self.data[CONF_BATTERY_DISCHARGE_SENSOR] = user_input[CONF_BATTERY_DISCHARGE_SENSOR]
+                self.data[CONF_BATTERY_POWER_SENSOR] = None
+                self.data[CONF_BATTERY_CHARGE_NEGATIVE] = None
+                self._store_battery_settings(user_input)
+                return await self._battery_done()
+
+        schema = vol.Schema({
+            self._required_with_default(
+                CONF_BATTERY_CHARGE_SENSOR, current.get(CONF_BATTERY_CHARGE_SENSOR)
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            self._required_with_default(
+                CONF_BATTERY_DISCHARGE_SENSOR, current.get(CONF_BATTERY_DISCHARGE_SENSOR)
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+            **self._battery_settings_schema(current),
+        })
+        return self.async_show_form(
+            step_id="battery_sensor_split", data_schema=schema, errors=errors
+        )
+
+
+class BoilerControllerFlowMixin(BatteryPriorityStepsMixin, DeviceValidationMixin):
     """Config flow steps for adding a Boiler Controller."""
 
     async def _async_zeroconf_boiler_controller(self, discovery_info: ZeroconfServiceInfo):
@@ -282,10 +462,7 @@ class BoilerControllerFlowMixin(DeviceValidationMixin):
             # Clear any leftover split-mode keys
             self.data.pop(CONF_RETURN_SENSOR, None)
             self.data.pop(CONF_USAGE_SENSOR, None)
-            return self.async_create_entry(
-                title=self.data.get("name", "Boiler Controller"),
-                data=self.data,
-            )
+            return await self.async_step_battery_priority()
 
         schema = vol.Schema({
             self._required_with_default(
@@ -308,10 +485,7 @@ class BoilerControllerFlowMixin(DeviceValidationMixin):
                 self.data[CONF_RETURN_SENSOR] = user_input[CONF_RETURN_SENSOR]
                 self.data[CONF_USAGE_SENSOR] = user_input[CONF_USAGE_SENSOR]
                 self.data.pop(CONF_POWER_SENSOR, None)
-                return self.async_create_entry(
-                    title=self.data.get("name", "Boiler Controller"),
-                    data=self.data,
-                )
+                return await self.async_step_battery_priority()
 
         schema = vol.Schema({
             vol.Required(CONF_RETURN_SENSOR): self._sensor_dropdown(sensors),
@@ -319,6 +493,17 @@ class BoilerControllerFlowMixin(DeviceValidationMixin):
         })
         return self.async_show_form(
             step_id="power_sensor_split", data_schema=schema, errors=errors
+        )
+
+    def _battery_current(self) -> dict:
+        return self.data
+
+    async def _battery_done(self):
+        # None marks "cleared" in the options flow; nothing to clear here.
+        data = {key: value for key, value in self.data.items() if value is not None}
+        return self.async_create_entry(
+            title=self.data.get("name", "Boiler Controller"),
+            data=data,
         )
 
     async def async_step_device_config(self, user_input=None):
@@ -368,7 +553,9 @@ class BoilerControllerFlowMixin(DeviceValidationMixin):
         )
 
 
-class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsFlow):
+class BoilerControllerOptionsFlow(
+    BatteryPriorityStepsMixin, DeviceValidationMixin, config_entries.OptionsFlow
+):
     """Handle options flow for Boiler Controller.
 
     The entry-point method must be named ``async_step_init`` (Home Assistant
@@ -473,7 +660,7 @@ class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsF
             self.data[CONF_POWER_SENSOR] = user_input[CONF_POWER_SENSOR]
             self.data.pop(CONF_RETURN_SENSOR, None)
             self.data.pop(CONF_USAGE_SENSOR, None)
-            return await self._finalize()
+            return await self.async_step_battery_priority()
 
         schema = vol.Schema({
             self._required_with_default(
@@ -499,7 +686,7 @@ class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsF
                 self.data[CONF_RETURN_SENSOR] = user_input[CONF_RETURN_SENSOR]
                 self.data[CONF_USAGE_SENSOR] = user_input[CONF_USAGE_SENSOR]
                 self.data.pop(CONF_POWER_SENSOR, None)
-                return await self._finalize()
+                return await self.async_step_battery_priority()
 
         schema = vol.Schema({
             vol.Required(
@@ -513,10 +700,19 @@ class BoilerControllerOptionsFlow(DeviceValidationMixin, config_entries.OptionsF
             step_id="power_sensor_split", data_schema=schema, errors=errors
         )
 
+    def _battery_current(self) -> dict:
+        return {**self._config_entry.data, **self.data}
+
+    async def _battery_done(self):
+        return await self._finalize()
+
     async def _finalize(self):
         """Persist the accumulated changes (URL and/or sensor selection) and reload."""
         new_data = dict(self._config_entry.data)
         new_data.update(self.data)
+        # None marks a key cleared in this run (e.g. split battery sensors
+        # after switching to a single one).
+        new_data = {key: value for key, value in new_data.items() if value is not None}
 
         self.hass.config_entries.async_update_entry(
             self._config_entry,

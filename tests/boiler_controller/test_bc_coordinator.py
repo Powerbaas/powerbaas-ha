@@ -28,6 +28,7 @@ import pytest
 from homeassistant.util import dt as dt_util
 
 from custom_components.powerbaas.devices.boiler_controller.const import (
+    BATTERY_SENSOR_TYPE_NONE,
     BOILER_MODE_AUTO,
     BOILER_MODE_MANUAL,
     BOILER_MODE_OFF,
@@ -146,6 +147,17 @@ def _make_coordinator(
     coordinator.device_online = True
     coordinator._offline_issue_id = "boiler_controller_offline_entry1"
     coordinator._missing_sensor_log = {}
+    coordinator.battery_sensor_type = BATTERY_SENSOR_TYPE_NONE
+    coordinator.battery_power_sensor_id = None
+    coordinator.battery_charge_negative = False
+    coordinator.battery_charge_sensor_id = None
+    coordinator.battery_discharge_sensor_id = None
+    coordinator.battery_soc_sensor_id = None
+    coordinator.battery_full_soc = 99.0
+    coordinator.battery_max_charge_watts = 800.0
+    coordinator.safety_margin_watts = 0.0
+    coordinator._battery_ref = None
+    coordinator._battery_stalled_at = None
     # Minimal DataUpdateCoordinator internals needed by
     # async_set_updated_data()/async_update_listeners() (bypassed __init__).
     coordinator._unsub_refresh = None

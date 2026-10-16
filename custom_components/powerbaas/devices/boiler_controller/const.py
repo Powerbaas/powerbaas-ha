@@ -24,6 +24,42 @@ POWER_SENSOR_TYPE_NET = "net"
 POWER_SENSOR_TYPE_SPLIT = "split"
 POWER_SENSOR_TYPES = [POWER_SENSOR_TYPE_NET, POWER_SENSOR_TYPE_SPLIT]
 
+# Battery priority (optional). Lets a home battery charge first; Auto mode
+# only gives the boiler what the battery can't absorb. Battery power is
+# either one signed sensor or separate charge/discharge sensors (both >= 0,
+# e.g. Zendure's outputPackPower/packInputPower).
+CONF_BATTERY_SENSOR_TYPE = "battery_sensor_type"
+CONF_BATTERY_POWER_SENSOR = "battery_power_sensor"
+CONF_BATTERY_CHARGE_NEGATIVE = "battery_charge_negative"
+CONF_BATTERY_CHARGE_SENSOR = "battery_charge_sensor"
+CONF_BATTERY_DISCHARGE_SENSOR = "battery_discharge_sensor"
+CONF_BATTERY_SOC_SENSOR = "battery_soc_sensor"
+CONF_BATTERY_FULL_SOC = "battery_full_soc"
+CONF_BATTERY_MAX_CHARGE_WATTS = "battery_max_charge_watts"
+# Watts Auto mode always leaves unused, battery or not - a buffer against
+# brief grid import while the boiler is still ramping down.
+CONF_SAFETY_MARGIN_WATTS = "safety_margin_watts"
+
+BATTERY_SENSOR_TYPE_NONE = "none"
+BATTERY_SENSOR_TYPE_NET = "net"
+BATTERY_SENSOR_TYPE_SPLIT = "split"
+BATTERY_SENSOR_TYPES = [BATTERY_SENSOR_TYPE_NONE, BATTERY_SENSOR_TYPE_NET, BATTERY_SENSOR_TYPE_SPLIT]
+
+DEFAULT_BATTERY_FULL_SOC = 99
+DEFAULT_BATTERY_MAX_CHARGE_WATTS = 800
+DEFAULT_SAFETY_MARGIN_WATTS = 0
+
+# Battery stall detection: while the battery's charge power hasn't risen by
+# more than BATTERY_STALL_DELTA_WATTS for BATTERY_STALL_SECONDS despite
+# surplus being left for it, it can't take more right now (calibration,
+# BMS taper, temperature, a charge limit) and the boiler takes that headroom
+# too. A stall is re-checked every BATTERY_STALL_RECHECK_SECONDS by
+# reserving the headroom again, since a battery that recovered can't show
+# it while the boiler is absorbing the surplus it would ramp up on.
+BATTERY_STALL_SECONDS = 30
+BATTERY_STALL_DELTA_WATTS = 50
+BATTERY_STALL_RECHECK_SECONDS = 300
+
 # Boiler Controller mDNS hostname prefix (pb-bc-*)
 BC_HOST_PREFIX = ("pb-bc-",)
 
@@ -90,4 +126,7 @@ DIAGNOSTIC_SENSORS = [
     ("WiFi Strength", ["system", "wifiStrength"], "dBm", "signal_strength", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:wifi-strength-2", "device_wifi_strength", False),
     ("Up Since", ["system", "bootTime"], None, "timestamp", None, 1, EntityCategory.DIAGNOSTIC, "mdi:calendar-clock", "device_up_since", True),
     ("IP Address", ["system", "ip"], None, None, None, 1, EntityCategory.DIAGNOSTIC, "mdi:ip-network", "device_ip", True),
+    # Coordinator-computed (Auto mode only): grid surplus after battery
+    # priority and safety margin - what the boiler is allowed to add.
+    ("Available Surplus", ["available_surplus"], "W", "power", "measurement", 1, EntityCategory.DIAGNOSTIC, "mdi:flash", "available_surplus", True),
 ]
