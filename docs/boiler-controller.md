@@ -43,6 +43,30 @@ Requested power is always clamped to the **Max Heating Power** select, which mir
 
 **Minimum Heating Power** sets a floor (in watts) that's applied only in **Auto** mode - useful for boilers that need to stay powered (e.g. for WiFi) even without solar surplus. It has no effect in Manual, On, or Off mode.
 
+## Battery priority
+
+Optional, set in the last step of the config/options flow. If you have a home battery, it charges first: in **Auto** mode the boiler only gets the surplus the battery can't take, and backs off whenever the battery discharges, so the battery never feeds the boiler.
+
+The controller needs:
+
+- **Battery power** - either one sensor (charging positive, discharging negative; a toggle flips this if your battery reports it the other way round) or two separate sensors for charge and discharge power (both always >= 0, e.g. Zendure).
+- **Battery charge level** (%) - optional but recommended; from **Battery counts as full from** (default 99%) the boiler gets the full surplus.
+- **Battery max charge power** (default 800 W).
+
+How the surplus is split (example: panels 1200 W, battery max 800 W):
+
+- **Battery charging at max (800 W)** - the boiler gets the remaining ±400 W.
+- **Battery charging below max (500 W) and still ramping up** - the 300 W it can still take is held back for it; the boiler gets what's left.
+- **Battery stuck at 500 W** (calibrating, almost full, temperature-limited, a charge limit) - if its charge power doesn't rise for 30 s while surplus is left for it, the boiler takes that 300 W too. Every 5 minutes the headroom is offered to the battery again, and the stall clears as soon as there's no surplus left (e.g. a cloud).
+- **Battery full** - the boiler gets the full surplus.
+- **Battery discharging** - the boiler backs off by that amount.
+
+If the battery sensors are unavailable, the controller falls back to plain grid surplus (the battery then temporarily loses priority, grid import isn't affected).
+
+**Safety margin** (W, default 0) is always left unused in Auto mode, with or without a battery - a buffer against brief grid import while the boiler is still ramping down after e.g. a cloud.
+
+The **Available Surplus** diagnostic sensor shows the surplus Auto mode is working with after battery priority and safety margin; the **Status** sensor's `battery_stalled` attribute shows whether the battery's headroom is currently released to the boiler.
+
 ## SSR
 
 The module's SSR relay is independent from the heating percentage output. Toggle it with the **SSR** switch; it reflects the module's live relay state.
@@ -63,3 +87,4 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 - `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address
+- `Available Surplus` (diagnostic sensor, W) - Auto mode's surplus after battery priority and safety margin; unavailable outside Auto mode

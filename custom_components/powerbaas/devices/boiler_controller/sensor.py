@@ -113,6 +113,9 @@ class BoilerControllerStatusSensor(CoordinatorEntity, SensorEntity):
             "device_url": coordinator.device_url,
             "poll_interval": f"{coordinator.poll_interval}s",
             "integration_version": str(coordinator.integration_version),
+            "battery_sensor_type": coordinator.battery_sensor_type,
+            "battery_stalled": coordinator._battery_stalled_at is not None,
+            "safety_margin_watts": coordinator.safety_margin_watts,
             "min_dimmer": None,
             "max_dimmer": None,
             "effective_min_dimmer": None,
@@ -129,6 +132,10 @@ class BoilerControllerStatusSensor(CoordinatorEntity, SensorEntity):
             ("power_sensor", coordinator.power_sensor_id),
             ("return_sensor", coordinator.return_sensor_id),
             ("usage_sensor", coordinator.usage_sensor_id),
+            ("battery_power_sensor", coordinator.battery_power_sensor_id),
+            ("battery_charge_sensor", coordinator.battery_charge_sensor_id),
+            ("battery_discharge_sensor", coordinator.battery_discharge_sensor_id),
+            ("battery_soc_sensor", coordinator.battery_soc_sensor_id),
         ):
             if not entity_id:
                 continue

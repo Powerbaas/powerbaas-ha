@@ -23,17 +23,36 @@ from .const import (
     BOILER_MODE_OFF,
     BOILER_MODE_ON,
     BOILER_MODES,
+    BATTERY_SENSOR_TYPE_NET,
+    BATTERY_SENSOR_TYPE_NONE,
+    BATTERY_SENSOR_TYPE_SPLIT,
+    BATTERY_SENSOR_TYPES,
+    BATTERY_STALL_DELTA_WATTS,
+    BATTERY_STALL_RECHECK_SECONDS,
+    BATTERY_STALL_SECONDS,
     BOOT_TIME_DRIFT_TOLERANCE,
     CALIBRATION_POLL_SECONDS,
+    CONF_BATTERY_CHARGE_NEGATIVE,
+    CONF_BATTERY_CHARGE_SENSOR,
+    CONF_BATTERY_DISCHARGE_SENSOR,
+    CONF_BATTERY_FULL_SOC,
+    CONF_BATTERY_MAX_CHARGE_WATTS,
+    CONF_BATTERY_POWER_SENSOR,
+    CONF_BATTERY_SENSOR_TYPE,
+    CONF_BATTERY_SOC_SENSOR,
     CONF_DEVICE_URL,
     CONF_POLL_INTERVAL,
     CONF_POWER_SENSOR,
     CONF_POWER_SENSOR_TYPE,
     CONF_RETURN_SENSOR,
+    CONF_SAFETY_MARGIN_WATTS,
     CONF_USAGE_SENSOR,
+    DEFAULT_BATTERY_FULL_SOC,
+    DEFAULT_BATTERY_MAX_CHARGE_WATTS,
     DEFAULT_MAX_HEATING_WATTS,
     DEFAULT_MIN_HEATING_WATTS,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_SAFETY_MARGIN_WATTS,
     DEFAULT_TARGET_WATTS,
     MAX_HEATING_WATTS_OPTIONS,
     POWER_SENSOR_TYPE_NET,
@@ -79,6 +98,24 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             usage_sensor_id = None
             tracked_entities = [power_sensor_id]
 
+        # Optional battery priority (see _compute_available_surplus). Battery
+        # sensors are tracked too, so a battery-side change also re-runs Auto.
+        data = config_entry.data
+        battery_type = data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_SENSOR_TYPE_NONE)
+        battery_sensor_type = (
+            battery_type if battery_type in BATTERY_SENSOR_TYPES else BATTERY_SENSOR_TYPE_NONE
+        )
+        battery_power_sensor_id = None
+        battery_charge_sensor_id = None
+        battery_discharge_sensor_id = None
+        if battery_sensor_type == BATTERY_SENSOR_TYPE_NET:
+            battery_power_sensor_id = data[CONF_BATTERY_POWER_SENSOR]
+            tracked_entities.append(battery_power_sensor_id)
+        elif battery_sensor_type == BATTERY_SENSOR_TYPE_SPLIT:
+            battery_charge_sensor_id = data[CONF_BATTERY_CHARGE_SENSOR]
+            battery_discharge_sensor_id = data[CONF_BATTERY_DISCHARGE_SENSOR]
+            tracked_entities.extend([battery_charge_sensor_id, battery_discharge_sensor_id])
+
         poll_interval = config_entry.options.get(
             CONF_POLL_INTERVAL,
             config_entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
@@ -99,6 +136,17 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self.return_sensor_id = return_sensor_id
         self.usage_sensor_id = usage_sensor_id
         self._tracked_entities = tracked_entities
+        self.battery_sensor_type = battery_sensor_type
+        self.battery_power_sensor_id = battery_power_sensor_id
+        self.battery_charge_negative = bool(data.get(CONF_BATTERY_CHARGE_NEGATIVE, False))
+        self.battery_charge_sensor_id = battery_charge_sensor_id
+        self.battery_discharge_sensor_id = battery_discharge_sensor_id
+        self.battery_soc_sensor_id = data.get(CONF_BATTERY_SOC_SENSOR) or None
+        self.battery_full_soc = float(data.get(CONF_BATTERY_FULL_SOC, DEFAULT_BATTERY_FULL_SOC))
+        self.battery_max_charge_watts = float(
+            data.get(CONF_BATTERY_MAX_CHARGE_WATTS, DEFAULT_BATTERY_MAX_CHARGE_WATTS)
+        )
+        self.safety_margin_watts = float(data.get(CONF_SAFETY_MARGIN_WATTS, DEFAULT_SAFETY_MARGIN_WATTS))
         self.poll_interval = poll_interval
         self.device_client = BCClient(hass, device_url)
 
@@ -137,6 +185,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             "max_heating_watts": max_heating_watts,
             "min_heating_watts": min_heating_watts,
             "calibration_active": False,
+            "available_surplus": None,
         }
 
         self.device_online = True
@@ -146,6 +195,9 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self._last_power_value = None
         self._last_auto_update = None
         self._missing_sensor_log: dict[str, Any] = {}
+        # Battery stall detection state - see _battery_reserve_watts.
+        self._battery_ref: tuple[float, Any] | None = None
+        self._battery_stalled_at = None
 
         self._calibration_lock = asyncio.Lock()
         self._calibration_cancel_requested = False
@@ -340,6 +392,10 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
                 return
 
             control_mode = data.get("control_mode")
+            if control_mode != BOILER_MODE_AUTO and data.get("available_surplus") is not None:
+                # Only meaningful while Auto is actually using it.
+                self.data = {**self.data, "available_surplus": None}
+
             if control_mode == BOILER_MODE_OFF:
                 await self._set_heating_percentage(0, source=BOILER_MODE_OFF)
                 return
@@ -368,15 +424,17 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             # Note: the boiler does clamping itself to its own maxHeatingWatts,
             # but we also clamp here to the configured max heating watts just to be safe.
             boiler_watts = self._extract_boiler_consumption()
+            available_surplus = self._compute_available_surplus(surplus, boiler_watts)
             max_heating_watts = data.get("max_heating_watts", 0)
-            available_watts = max(0, min(max_heating_watts, int(boiler_watts + surplus)))
+            available_watts = max(0, min(max_heating_watts, int(boiler_watts + available_surplus)))
             min_heating_watts = data.get("min_heating_watts", 0)
             if min_heating_watts:
                 available_watts = max(available_watts, min_heating_watts)
 
             _LOGGER.debug(
-                "Auto mode: surplus=%.1fW, boiler=%.1fW, available=%dW",
+                "Auto mode: surplus=%.1fW, available surplus=%.1fW, boiler=%.1fW, available=%dW",
                 surplus,
+                available_surplus,
                 boiler_watts,
                 available_watts,
             )
@@ -386,7 +444,11 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             # mode number entity reads/writes, so "Target Power" shows what
             # every mode is doing, not just Manual (the caller's finally
             # block below notifies listeners for this tick either way).
-            self.data = {**self.data, "target_watts": available_watts}
+            self.data = {
+                **self.data,
+                "target_watts": available_watts,
+                "available_surplus": round(available_surplus),
+            }
 
             self._last_auto_update = dt_util.utcnow()
 
@@ -453,6 +515,113 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         if net_watts is None:
             return None
         return -float(net_watts)
+
+    # ------------------------------------------------------------------
+    # Battery priority
+    # ------------------------------------------------------------------
+
+    def _compute_available_surplus(self, surplus: float, boiler_watts: float) -> float:
+        """Return the part of the grid surplus the boiler may use.
+
+        Subtracts the safety margin and, with battery priority configured,
+        whatever the battery is discharging (so it never feeds the boiler)
+        plus the charge headroom it could still take (so it charges first).
+        Falls back to plain grid surplus when the battery can't be read.
+        """
+        available = surplus - self.safety_margin_watts
+        if self.battery_sensor_type == BATTERY_SENSOR_TYPE_NONE:
+            return available
+
+        charge_watts = self._read_battery_charge_watts()
+        if charge_watts is None:
+            _LOGGER.debug("Battery power unreadable - ignoring battery priority this cycle")
+            return available
+
+        discharge_watts = max(0.0, -charge_watts)
+        reserve_watts = self._battery_reserve_watts(charge_watts, surplus, boiler_watts)
+        return available - discharge_watts - reserve_watts
+
+    def _read_battery_charge_watts(self) -> float | None:
+        """Return battery power in Watts, positive while charging."""
+        if self.battery_sensor_type == BATTERY_SENSOR_TYPE_SPLIT:
+            charge = self._read_sensor_watts(self.battery_charge_sensor_id)
+            discharge = self._read_sensor_watts(self.battery_discharge_sensor_id)
+            if charge is None or discharge is None:
+                return None
+            return float(charge) - float(discharge)
+
+        value = self._read_sensor_watts(self.battery_power_sensor_id)
+        if value is None:
+            return None
+        return -float(value) if self.battery_charge_negative else float(value)
+
+    def _read_battery_soc(self) -> float | None:
+        if not self.battery_soc_sensor_id:
+            return None
+        state = self.hass.states.get(self.battery_soc_sensor_id)
+        if not state:
+            return None
+        try:
+            return float(state.state)
+        except (TypeError, ValueError):
+            return None
+
+    def _battery_reserve_watts(
+        self, charge_watts: float, surplus: float, boiler_watts: float
+    ) -> float:
+        """Return the charge headroom to hold back for the battery.
+
+        Zero when the battery is full or already at its max charge power.
+        Otherwise the headroom is reserved while the battery is still
+        ramping up; if it stops rising for BATTERY_STALL_SECONDS while
+        surplus is being left for it, it can't take more right now
+        (calibration, BMS taper, temperature, a charge limit) and the boiler
+        gets the headroom too. That stall is re-checked every
+        BATTERY_STALL_RECHECK_SECONDS, and cleared once there's no surplus
+        left to share at all (e.g. a cloud), so the battery gets first pick
+        again when the sun returns.
+        """
+        now = dt_util.utcnow()
+        soc = self._read_battery_soc()
+        headroom = max(0.0, self.battery_max_charge_watts - max(0.0, charge_watts))
+        if (soc is not None and soc >= self.battery_full_soc) or headroom < BATTERY_STALL_DELTA_WATTS:
+            self._battery_ref = None
+            self._battery_stalled_at = None
+            return 0.0
+
+        if self._battery_stalled_at is not None:
+            if surplus + boiler_watts <= BATTERY_STALL_DELTA_WATTS:
+                _LOGGER.debug("No surplus left to share - clearing battery stall")
+                self._battery_stalled_at = None
+                self._battery_ref = (charge_watts, now)
+                return headroom
+            if (now - self._battery_stalled_at).total_seconds() < BATTERY_STALL_RECHECK_SECONDS:
+                return 0.0
+            _LOGGER.debug("Re-checking stalled battery - reserving %.0fW headroom again", headroom)
+            self._battery_stalled_at = None
+            self._battery_ref = (charge_watts, now)
+            return headroom
+
+        # Still rising, or nothing exported for the battery to ramp up on:
+        # restart the stall window.
+        if (
+            self._battery_ref is None
+            or charge_watts > self._battery_ref[0] + BATTERY_STALL_DELTA_WATTS
+            or surplus <= BATTERY_STALL_DELTA_WATTS
+        ):
+            self._battery_ref = (charge_watts, now)
+            return headroom
+
+        if (now - self._battery_ref[1]).total_seconds() >= BATTERY_STALL_SECONDS:
+            _LOGGER.info(
+                "Battery not taking more than %.0fW despite %.0fW export - releasing its headroom to the boiler",
+                charge_watts,
+                surplus,
+            )
+            self._battery_stalled_at = now
+            return 0.0
+
+        return headroom
 
     def _extract_boiler_consumption(self) -> float:
         """Return the latest device-reported boiler power in watts."""

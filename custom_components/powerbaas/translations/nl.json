@@ -84,6 +84,54 @@
         "data": {
           "device_url": "Apparaat Basis URL"
         }
+      },
+      "battery_priority": {
+        "title": "Batterij en veiligheidsmarge",
+        "description": "Heeft u een thuisbatterij? Dan laadt de batterij eerst: in Auto-modus gebruikt de boiler alleen het zonne-overschot dat de batterij niet kan opnemen, en regelt terug zodra de batterij ontlaadt. De sensoren van de batterij kiest u in de volgende stap.\n\nDe veiligheidsmarge geldt met en zonder batterij.",
+        "data": {
+          "battery_sensor_type": "Thuisbatterij",
+          "safety_margin_watts": "Veiligheidsmarge"
+        },
+        "data_description": {
+          "battery_sensor_type": "Hoe het vermogen van uw batterij in Home Assistant zichtbaar is: één sensor die positief is bij laden en negatief bij ontladen, of twee aparte sensoren (één voor laden, één voor ontladen). Geen batterij? Kies 'Geen thuisbatterij'.",
+          "safety_margin_watts": "De boiler laat altijd zoveel watt overschot ongebruikt. Zo neemt hij geen stroom van het net af als er een wolk voorbij komt en hij nog aan het terugregelen is. 50 W is een goed begin; 0 W gebruikt al het overschot."
+        }
+      },
+      "battery_sensor_net": {
+        "title": "Kies sensor batterijvermogen",
+        "description": "Kies de sensor met het vermogen van de batterij. Standaard wordt laden als positief en ontladen als negatief verwacht; zet de schakelaar aan als uw batterij het andersom rapporteert.",
+        "data": {
+          "battery_power_sensor": "Sensor batterijvermogen",
+          "battery_charge_negative": "Laden wordt als negatief gerapporteerd",
+          "battery_soc_sensor": "Sensor laadstand batterij (%)",
+          "battery_full_soc": "Batterij geldt als vol vanaf",
+          "battery_max_charge_watts": "Max laadvermogen batterij"
+        },
+        "data_description": {
+          "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
+          "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
+          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+        }
+      },
+      "battery_sensor_split": {
+        "title": "Kies sensoren voor laden en ontladen",
+        "description": "Kies twee aparte sensoren: een voor het vermogen dat de batterij in gaat (laden) en een voor het vermogen dat eruit komt (ontladen). Beide zijn altijd 0 of positief.",
+        "data": {
+          "battery_charge_sensor": "Sensor laadvermogen",
+          "battery_discharge_sensor": "Sensor ontlaadvermogen",
+          "battery_soc_sensor": "Sensor laadstand batterij (%)",
+          "battery_full_soc": "Batterij geldt als vol vanaf",
+          "battery_max_charge_watts": "Max laadvermogen batterij"
+        },
+        "data_description": {
+          "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
+          "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
+          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+        }
       }
     },
     "error": {
@@ -158,6 +206,54 @@
         "data": {
           "device_url": "Apparaat Basis URL"
         }
+      },
+      "battery_priority": {
+        "title": "Batterij en veiligheidsmarge",
+        "description": "Heeft u een thuisbatterij? Dan laadt de batterij eerst: in Auto-modus gebruikt de boiler alleen het zonne-overschot dat de batterij niet kan opnemen, en regelt terug zodra de batterij ontlaadt. De sensoren van de batterij kiest u in de volgende stap.\n\nDe veiligheidsmarge geldt met en zonder batterij.",
+        "data": {
+          "battery_sensor_type": "Thuisbatterij",
+          "safety_margin_watts": "Veiligheidsmarge"
+        },
+        "data_description": {
+          "battery_sensor_type": "Hoe het vermogen van uw batterij in Home Assistant zichtbaar is: één sensor die positief is bij laden en negatief bij ontladen, of twee aparte sensoren (één voor laden, één voor ontladen). Geen batterij? Kies 'Geen thuisbatterij'.",
+          "safety_margin_watts": "De boiler laat altijd zoveel watt overschot ongebruikt. Zo neemt hij geen stroom van het net af als er een wolk voorbij komt en hij nog aan het terugregelen is. 50 W is een goed begin; 0 W gebruikt al het overschot."
+        }
+      },
+      "battery_sensor_net": {
+        "title": "Kies sensor batterijvermogen",
+        "description": "Kies de sensor met het vermogen van de batterij. Standaard wordt laden als positief en ontladen als negatief verwacht; zet de schakelaar aan als uw batterij het andersom rapporteert.",
+        "data": {
+          "battery_power_sensor": "Sensor batterijvermogen",
+          "battery_charge_negative": "Laden wordt als negatief gerapporteerd",
+          "battery_soc_sensor": "Sensor laadstand batterij (%)",
+          "battery_full_soc": "Batterij geldt als vol vanaf",
+          "battery_max_charge_watts": "Max laadvermogen batterij"
+        },
+        "data_description": {
+          "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
+          "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
+          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+        }
+      },
+      "battery_sensor_split": {
+        "title": "Kies sensoren voor laden en ontladen",
+        "description": "Kies twee aparte sensoren: een voor het vermogen dat de batterij in gaat (laden) en een voor het vermogen dat eruit komt (ontladen). Beide zijn altijd 0 of positief.",
+        "data": {
+          "battery_charge_sensor": "Sensor laadvermogen",
+          "battery_discharge_sensor": "Sensor ontlaadvermogen",
+          "battery_soc_sensor": "Sensor laadstand batterij (%)",
+          "battery_full_soc": "Batterij geldt als vol vanaf",
+          "battery_max_charge_watts": "Max laadvermogen batterij"
+        },
+        "data_description": {
+          "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
+          "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
+          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+        }
       }
     },
     "error": {
@@ -210,6 +306,15 @@
     "rgb_offline": {
       "title": "Powerbaas RGB onbereikbaar",
       "description": "De Powerbaas RGB \"{name}\" heeft meerdere keren achter elkaar niet gereageerd op een statuscheck en wordt als offline beschouwd. De light-entiteit en sensoren tonen \"unavailable\" totdat hij weer reageert. Controleer de voeding en WiFi-verbinding - dit verdwijnt vanzelf zodra hij weer bereikbaar is."
+    }
+  },
+  "selector": {
+    "battery_sensor_type": {
+      "options": {
+        "none": "Geen thuisbatterij",
+        "net": "Eén sensor voor batterijvermogen (laden en ontladen)",
+        "split": "Aparte sensoren voor laden en ontladen"
+      }
     }
   }
 }

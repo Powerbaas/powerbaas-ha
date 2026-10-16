@@ -84,6 +84,54 @@
         "data": {
           "device_url": "Device Base URL"
         }
+      },
+      "battery_priority": {
+        "title": "Battery and Safety Margin",
+        "description": "Do you have a home battery? Then the battery charges first: in Auto mode the boiler only uses the solar surplus the battery can't take, and backs off as soon as the battery discharges. You'll pick the battery's sensors in the next step.\n\nThe safety margin applies with or without a battery.",
+        "data": {
+          "battery_sensor_type": "Home battery",
+          "safety_margin_watts": "Safety margin"
+        },
+        "data_description": {
+          "battery_sensor_type": "How your battery's power shows up in Home Assistant: one sensor that is positive while charging and negative while discharging, or two separate sensors (one for charging, one for discharging). No battery? Choose 'No home battery'.",
+          "safety_margin_watts": "The boiler always leaves this many watts of surplus unused. That way it never draws from the grid for a moment when a cloud passes, while it is still turning down. 50 W is a good start; 0 W uses all surplus."
+        }
+      },
+      "battery_sensor_net": {
+        "title": "Select Battery Power Sensor",
+        "description": "Choose the sensor reporting the battery's power. By default charging is expected to be positive and discharging negative; enable the toggle if your battery reports it the other way round.",
+        "data": {
+          "battery_power_sensor": "Battery power sensor",
+          "battery_charge_negative": "Charging is reported as negative",
+          "battery_soc_sensor": "Battery charge level sensor (%)",
+          "battery_full_soc": "Battery counts as full from",
+          "battery_max_charge_watts": "Battery max charge power"
+        },
+        "data_description": {
+          "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
+          "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
+          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+        }
+      },
+      "battery_sensor_split": {
+        "title": "Select Battery Charge and Discharge Sensors",
+        "description": "Choose two separate sensors: one for the power going into the battery (charging) and one for the power coming out of it (discharging). Both should always be 0 or positive.",
+        "data": {
+          "battery_charge_sensor": "Charge power sensor",
+          "battery_discharge_sensor": "Discharge power sensor",
+          "battery_soc_sensor": "Battery charge level sensor (%)",
+          "battery_full_soc": "Battery counts as full from",
+          "battery_max_charge_watts": "Battery max charge power"
+        },
+        "data_description": {
+          "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
+          "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
+          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+        }
       }
     },
     "error": {
@@ -158,6 +206,54 @@
         "data": {
           "device_url": "Device Base URL"
         }
+      },
+      "battery_priority": {
+        "title": "Battery and Safety Margin",
+        "description": "Do you have a home battery? Then the battery charges first: in Auto mode the boiler only uses the solar surplus the battery can't take, and backs off as soon as the battery discharges. You'll pick the battery's sensors in the next step.\n\nThe safety margin applies with or without a battery.",
+        "data": {
+          "battery_sensor_type": "Home battery",
+          "safety_margin_watts": "Safety margin"
+        },
+        "data_description": {
+          "battery_sensor_type": "How your battery's power shows up in Home Assistant: one sensor that is positive while charging and negative while discharging, or two separate sensors (one for charging, one for discharging). No battery? Choose 'No home battery'.",
+          "safety_margin_watts": "The boiler always leaves this many watts of surplus unused. That way it never draws from the grid for a moment when a cloud passes, while it is still turning down. 50 W is a good start; 0 W uses all surplus."
+        }
+      },
+      "battery_sensor_net": {
+        "title": "Select Battery Power Sensor",
+        "description": "Choose the sensor reporting the battery's power. By default charging is expected to be positive and discharging negative; enable the toggle if your battery reports it the other way round.",
+        "data": {
+          "battery_power_sensor": "Battery power sensor",
+          "battery_charge_negative": "Charging is reported as negative",
+          "battery_soc_sensor": "Battery charge level sensor (%)",
+          "battery_full_soc": "Battery counts as full from",
+          "battery_max_charge_watts": "Battery max charge power"
+        },
+        "data_description": {
+          "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
+          "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
+          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+        }
+      },
+      "battery_sensor_split": {
+        "title": "Select Battery Charge and Discharge Sensors",
+        "description": "Choose two separate sensors: one for the power going into the battery (charging) and one for the power coming out of it (discharging). Both should always be 0 or positive.",
+        "data": {
+          "battery_charge_sensor": "Charge power sensor",
+          "battery_discharge_sensor": "Discharge power sensor",
+          "battery_soc_sensor": "Battery charge level sensor (%)",
+          "battery_full_soc": "Battery counts as full from",
+          "battery_max_charge_watts": "Battery max charge power"
+        },
+        "data_description": {
+          "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
+          "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
+          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+        }
       }
     },
     "error": {
@@ -210,6 +306,15 @@
     "rgb_offline": {
       "title": "Powerbaas RGB unreachable",
       "description": "The Powerbaas RGB \"{name}\" hasn't responded to several status checks in a row and is considered offline. Its light entity and sensors will show as unavailable until it responds again. Check its power and WiFi connection - this will clear automatically once it's reachable."
+    }
+  },
+  "selector": {
+    "battery_sensor_type": {
+      "options": {
+        "none": "No home battery",
+        "net": "One battery power sensor (charging and discharging)",
+        "split": "Separate charge and discharge sensors"
+      }
     }
   }
 }
