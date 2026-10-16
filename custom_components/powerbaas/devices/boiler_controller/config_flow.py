@@ -721,4 +721,6 @@ class BoilerControllerOptionsFlow(
             unique_id=self.data.get(CONF_DEVICE_ID, self._config_entry.unique_id),
         )
         await self.hass.config_entries.async_reload(self._config_entry.entry_id)
-        return self.async_create_entry(title="", data={})
+        # HA replaces entry.options with this data - pass the current options
+        # (control mode, heating watts, ...) through instead of wiping them.
+        return self.async_create_entry(title="", data=dict(self._config_entry.options))
