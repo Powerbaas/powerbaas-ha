@@ -84,7 +84,7 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 - `Max Heating Power` (select) - configurable safety ceiling, in watts (breaker presets)
 - `Minimum Heating Power` (number) - Auto-mode-only floor, in watts
 - `SSR` (switch) - the module's SSR relay state
-- `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
+- `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes. `Running` means the module actually draws power (> 10 W), not just that a heating percentage is set
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address
 - `Available Surplus` (diagnostic sensor, W) - Auto mode's surplus after battery priority and safety margin; unavailable outside Auto mode

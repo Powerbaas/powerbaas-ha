@@ -75,6 +75,10 @@ BOILER_MODES = [BOILER_MODE_AUTO, BOILER_MODE_MANUAL, BOILER_MODE_ON, BOILER_MOD
 # overwrites this at runtime with whatever it last commanded the device to)
 DEFAULT_TARGET_WATTS = 0
 
+# Status sensor reports Running only above this measured draw; a commanded
+# heatingPercentage alone isn't enough (e.g. 1% while the thermostat is satisfied).
+STATUS_RUNNING_MIN_WATTS = 10
+
 # Seconds between device status polls (updates all sensor values)
 DEFAULT_POLL_INTERVAL = 10
 

@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ...const import DOMAIN
-from .const import BOILER_MODE_MANUAL, MAIN_SENSORS, DIAGNOSTIC_SENSORS
+from .const import BOILER_MODE_MANUAL, MAIN_SENSORS, DIAGNOSTIC_SENSORS, STATUS_RUNNING_MIN_WATTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,8 +96,11 @@ class BoilerControllerStatusSensor(CoordinatorEntity, SensorEntity):
         status = data.get("status") or {}
         if status.get("errors"):
             return "Error"
-        heating = status.get("heatingPercentage", 0)
-        if heating and float(heating) > 0:
+        try:
+            power = float(status.get("power") or 0)
+        except (TypeError, ValueError):
+            power = 0.0
+        if power > STATUS_RUNNING_MIN_WATTS:
             return "Running"
         return "Idle"
 

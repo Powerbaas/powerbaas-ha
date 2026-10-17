@@ -100,12 +100,12 @@ def test_status_sensor_calibration_state() -> None:
 
 
 def test_status_sensor_running_state() -> None:
-    sensor = _status_sensor(online=True, status={"heatingPercentage": 50})
+    sensor = _status_sensor(online=True, status={"heatingPercentage": 50, "power": 1200})
 
     assert BoilerControllerStatusSensor.state.fget(sensor) == "Running"
 
 
 def test_status_sensor_idle_state() -> None:
-    sensor = _status_sensor(online=True, status={"heatingPercentage": 0})
+    sensor = _status_sensor(online=True, status={"heatingPercentage": 0, "power": 0})
 
     assert BoilerControllerStatusSensor.state.fget(sensor) == "Idle"
