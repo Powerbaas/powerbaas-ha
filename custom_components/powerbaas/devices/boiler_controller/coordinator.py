@@ -439,7 +439,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
                 available_watts,
             )
 
-            await self.device_client.async_set_target_watts(available_watts)
+            await self._send_target_watts(available_watts)
             # Mirror the auto-computed value into the same field the Manual
             # mode number entity reads/writes, so "Target Power" shows what
             # every mode is doing, not just Manual (the caller's finally
@@ -798,8 +798,23 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         """Send the stored target watts to the device (Manual mode only)."""
         watts = self.data.get("target_watts", 0)
         _LOGGER.debug("Applying target power: %sW", watts)
-        await self.device_client.async_set_target_watts(watts)
+        await self._send_target_watts(watts)
         await self.async_request_refresh()
+
+    async def _send_target_watts(self, watts: int) -> None:
+        """Send a watts target, or 0% when the target is 0W.
+
+        The firmware's wattage control probes up to 1% on a 0W target when
+        it measures 0W (e.g. thermostat satisfied) and stays there until the
+        next command. POST /api/heat/percentage disables wattage control, so
+        0% sticks. Deliberately bypasses _set_heating_percentage()'s dedupe:
+        the device can have drifted to 1% since the last poll.
+        """
+        if watts <= 0:
+            await self.device_client.async_set_heating_percentage(0)
+            self._current_dimmer_percentage = 0
+            return
+        await self.device_client.async_set_target_watts(watts)
 
     async def async_set_max_heating_watts(self, watts: int) -> None:
         """Set the device's configurable max heating wattage (one of MAX_HEATING_WATTS_OPTIONS)."""
