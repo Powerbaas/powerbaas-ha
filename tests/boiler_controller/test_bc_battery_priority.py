@@ -63,7 +63,8 @@ async def _run_at(coordinator, when):
         return_value=when,
     ):
         await coordinator._async_update()
-    return coordinator.device_client.target_watts_calls[-1]
+    # 0W goes out as 0% (see _send_target_watts), so read the mirrored target.
+    return coordinator.data["target_watts"]
 
 
 async def test_battery_at_max_charge_boiler_gets_the_rest() -> None:
