@@ -110,7 +110,7 @@
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
-          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
           "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
           "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
         }
@@ -128,7 +128,7 @@
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
-          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
           "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
           "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
         }
@@ -232,7 +232,7 @@
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
-          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
           "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
           "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
         }
@@ -250,7 +250,7 @@
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
-          "battery_soc_sensor": "Optional. The sensor showing how full the battery is, in %. Without it the boiler only gets surplus once the battery charges at its max power or stops taking more.",
+          "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
           "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
           "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
         }

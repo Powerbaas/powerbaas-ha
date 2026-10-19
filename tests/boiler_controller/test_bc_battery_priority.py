@@ -51,7 +51,7 @@ def _battery_coordinator(
         coordinator.battery_power_sensor_id = "sensor.battery_power"
         coordinator.battery_charge_negative = charge_negative
         states["sensor.battery_power"] = _FakeState(battery, "W")
-    coordinator.battery_soc_sensor_id = "sensor.battery_soc"
+    coordinator.battery_soc_sensor_id = "sensor.battery_soc" if soc is not None else None
     coordinator.safety_margin_watts = margin
     coordinator.data = {**coordinator.data, "status": {"power": boiler_watts}}
     return coordinator
@@ -82,7 +82,7 @@ async def test_battery_still_ramping_keeps_its_headroom() -> None:
 
 
 async def test_battery_stalled_releases_headroom_to_boiler() -> None:
-    coordinator = _battery_coordinator(grid="-700", battery="500")
+    coordinator = _battery_coordinator(grid="-700", battery="500", soc=None)
 
     assert await _run_at(coordinator, NOW) == 400
     assert await _run_at(coordinator, NOW + timedelta(seconds=BATTERY_STALL_SECONDS - 1)) == 400
@@ -90,7 +90,7 @@ async def test_battery_stalled_releases_headroom_to_boiler() -> None:
 
 
 async def test_rising_battery_restarts_stall_window() -> None:
-    coordinator = _battery_coordinator(grid="-700", battery="500")
+    coordinator = _battery_coordinator(grid="-700", battery="500", soc=None)
     await _run_at(coordinator, NOW)
 
     coordinator.hass._states["sensor.battery_power"] = _FakeState("600", "W")
@@ -102,7 +102,7 @@ async def test_rising_battery_restarts_stall_window() -> None:
 
 
 async def test_stalled_battery_gets_rechecked() -> None:
-    coordinator = _battery_coordinator(grid="-700", battery="500")
+    coordinator = _battery_coordinator(grid="-700", battery="500", soc=None)
     await _run_at(coordinator, NOW)
     stalled = NOW + timedelta(seconds=BATTERY_STALL_SECONDS)
     await _run_at(coordinator, stalled)
@@ -117,7 +117,7 @@ async def test_stalled_battery_gets_rechecked() -> None:
 
 
 async def test_stall_clears_when_no_surplus_left() -> None:
-    coordinator = _battery_coordinator(grid="-700", battery="500")
+    coordinator = _battery_coordinator(grid="-700", battery="500", soc=None)
     await _run_at(coordinator, NOW)
     stalled = NOW + timedelta(seconds=BATTERY_STALL_SECONDS)
     await _run_at(coordinator, stalled)
