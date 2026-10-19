@@ -572,8 +572,10 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         """Return the charge headroom to hold back for the battery.
 
         Zero when the battery is full or already at its max charge power.
-        Otherwise the headroom is reserved while the battery is still
-        ramping up; if it stops rising for BATTERY_STALL_SECONDS while
+        With a charge level sensor the headroom is otherwise always
+        reserved. Without one, it's reserved while the battery is still
+        ramping up or switching over from discharging; if it sits still
+        (not discharging) for BATTERY_STALL_SECONDS while
         surplus is being left for it, it can't take more right now
         (calibration, BMS taper, temperature, a charge limit) and the boiler
         gets the headroom too. That stall is re-checked every
@@ -589,6 +591,15 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             self._battery_stalled_at = None
             return 0.0
 
+        # With a charge level sensor the battery keeps its headroom until it
+        # counts as full - no guessing from its power, which pauses for up
+        # to minutes while some batteries switch between (dis)charging.
+        # (An unreadable charge level keeps the headroom reserved too.)
+        if self.battery_soc_sensor_id:
+            self._battery_ref = None
+            self._battery_stalled_at = None
+            return headroom
+
         if self._battery_stalled_at is not None:
             if surplus + boiler_watts <= BATTERY_STALL_DELTA_WATTS:
                 _LOGGER.debug("No surplus left to share - clearing battery stall")
@@ -602,11 +613,14 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             self._battery_ref = (charge_watts, now)
             return headroom
 
-        # Still rising, or nothing exported for the battery to ramp up on:
-        # restart the stall window.
+        # Battery power still moving (ramping up, or switching over from
+        # discharging - some batteries take a while to turn around), still
+        # discharging, or nothing exported for it to ramp up on: restart the
+        # stall window. Only a battery sitting still on export is stalled.
         if (
             self._battery_ref is None
-            or charge_watts > self._battery_ref[0] + BATTERY_STALL_DELTA_WATTS
+            or abs(charge_watts - self._battery_ref[0]) > BATTERY_STALL_DELTA_WATTS
+            or charge_watts < -BATTERY_STALL_DELTA_WATTS
             or surplus <= BATTERY_STALL_DELTA_WATTS
         ):
             self._battery_ref = (charge_watts, now)

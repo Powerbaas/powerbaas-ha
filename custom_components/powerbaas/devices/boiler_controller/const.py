@@ -49,14 +49,17 @@ DEFAULT_BATTERY_FULL_SOC = 99
 DEFAULT_BATTERY_MAX_CHARGE_WATTS = 800
 DEFAULT_SAFETY_MARGIN_WATTS = 0
 
-# Battery stall detection: while the battery's charge power hasn't risen by
+# Battery stall detection: while the battery's charge power hasn't moved by
 # more than BATTERY_STALL_DELTA_WATTS for BATTERY_STALL_SECONDS despite
 # surplus being left for it, it can't take more right now (calibration,
 # BMS taper, temperature, a charge limit) and the boiler takes that headroom
 # too. A stall is re-checked every BATTERY_STALL_RECHECK_SECONDS by
 # reserving the headroom again, since a battery that recovered can't show
 # it while the boiler is absorbing the surplus it would ramp up on.
-BATTERY_STALL_SECONDS = 30
+# BATTERY_STALL_SECONDS must outlast the battery's own reaction time to
+# export - e.g. Zendure Manager takes 30-70 s to switch from idle or
+# discharging to charging.
+BATTERY_STALL_SECONDS = 120
 BATTERY_STALL_DELTA_WATTS = 50
 BATTERY_STALL_RECHECK_SECONDS = 300
 

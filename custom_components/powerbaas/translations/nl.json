@@ -110,7 +110,7 @@
         "data_description": {
           "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
           "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
-          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
           "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
           "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
         }
@@ -128,7 +128,7 @@
         "data_description": {
           "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
           "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
-          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
           "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
           "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
         }
@@ -232,7 +232,7 @@
         "data_description": {
           "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
           "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
-          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
           "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
           "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
         }
@@ -250,7 +250,7 @@
         "data_description": {
           "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
           "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
-          "battery_soc_sensor": "Optioneel. De sensor die aangeeft hoe vol de batterij is, in %. Zonder deze sensor krijgt de boiler pas overschot als de batterij op max vermogen laadt of niet meer opneemt.",
+          "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
           "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
           "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
         }

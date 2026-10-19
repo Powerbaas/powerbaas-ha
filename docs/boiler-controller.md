@@ -50,14 +50,14 @@ Optional, set in the last step of the config/options flow. If you have a home ba
 The controller needs:
 
 - **Battery power** - either one sensor (charging positive, discharging negative; a toggle flips this if your battery reports it the other way round) or two separate sensors for charge and discharge power (both always >= 0, e.g. Zendure).
-- **Battery charge level** (%) - optional but recommended; from **Battery counts as full from** (default 99%) the boiler gets the full surplus.
+- **Battery charge level** (%) - optional but recommended; from **Battery counts as full from** (default 99%) the boiler gets the full surplus. Below that, the battery keeps priority no matter what its power does - batteries like Zendure pause for up to minutes while switching between charging and discharging, and the boiler must not grab the surplus in the meantime.
 - **Battery max charge power** (default 800 W).
 
 How the surplus is split (example: panels 1200 W, battery max 800 W):
 
 - **Battery charging at max (800 W)** - the boiler gets the remaining ±400 W.
 - **Battery charging below max (500 W) and still ramping up** - the 300 W it can still take is held back for it; the boiler gets what's left.
-- **Battery stuck at 500 W** (calibrating, almost full, temperature-limited, a charge limit) - if its charge power doesn't rise for 30 s while surplus is left for it, the boiler takes that 300 W too. Every 5 minutes the headroom is offered to the battery again, and the stall clears as soon as there's no surplus left (e.g. a cloud).
+- **Battery stuck at 500 W, without a charge level sensor** (calibrating, almost full, temperature-limited, a charge limit) - if its charge power stays put for 2 minutes while surplus is left for it, the boiler takes that 300 W too. A battery that's still switching over from discharging to charging (which can take a minute, e.g. Zendure) isn't treated as stuck. Every 5 minutes the headroom is offered to the battery again, and the stall clears as soon as there's no surplus left (e.g. a cloud).
 - **Battery full** - the boiler gets the full surplus.
 - **Battery discharging** - the boiler backs off by that amount.
 
