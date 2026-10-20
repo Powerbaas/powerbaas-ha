@@ -106,14 +106,18 @@
           "battery_charge_negative": "Charging is reported as negative",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "battery_sensor_split": {
@@ -124,14 +128,18 @@
           "battery_discharge_sensor": "Discharge power sensor",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "power_temp": {
@@ -162,7 +170,10 @@
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
       "device_in_use": "This module is already configured",
-      "cannot_connect_power_temp": "Unable to reach the PowerTemp"
+      "cannot_connect_power_temp": "Unable to reach the PowerTemp",
+      "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
+      "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'"
     },
     "abort": {
       "already_configured": "This Powerbaas device is already configured",
@@ -243,14 +254,18 @@
           "battery_charge_negative": "Charging is reported as negative",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "battery_sensor_split": {
@@ -261,14 +276,18 @@
           "battery_discharge_sensor": "Discharge power sensor",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "power_temp_device_config": {
@@ -318,7 +337,10 @@
       "device_in_use": "This module is already configured",
       "cannot_connect_power_temp": "Unable to reach the PowerTemp",
       "name_too_long": "The name is too long (max 31 bytes)",
-      "cannot_save": "The device rejected the change or couldn't be reached"
+      "cannot_save": "The device rejected the change or couldn't be reached",
+      "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
+      "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'"
     },
     "abort": {
       "device_unavailable": "The device isn't loaded right now. Check that it's online and try again.",

@@ -45,6 +45,15 @@ Go to Settings → Devices & Services → Add Integration → search for "Powerb
 - **[Airco Bridge](docs/airco-bridge.md)** - controls a Powerbaas Airco Bridge, sending IR commands to an air conditioner and optionally reading room temperature
 - **[Powerbaas RGB](docs/rgb.md)** - controls a Powerbaas RGB: follow meter power usage, or set color and effect in Standalone mode
 
+### Boiler Controller with a home battery
+
+If you have a home battery, set up **battery priority** in the Boiler Controller's options so the battery charges first and the boiler only gets what's left. Two settings are easy to get wrong:
+
+- **Battery counts as full from** must match the maximum charge level set in your battery itself (e.g. 100%, or 80% if you limit it). Set it higher than the battery actually charges to, and the boiler keeps waiting for a level the battery never reaches - your surplus goes to the grid instead.
+- **Slow charging from** + **Charge power while slow charging** (optional) - many batteries charge slowly near the top (topping off, calibrating). Without these, the battery's full max charge power stays reserved until it's full, so e.g. at 98% a battery taking 300 W can leave 1+ kW going to the grid. Set e.g. 95% / 500 W and from 95% only 500 W is held back for the battery; the boiler gets the rest. Leave both empty if your battery stops at a lower limit (e.g. 80%).
+
+See [Battery priority](docs/boiler-controller.md#battery-priority) for the full explanation.
+
 ## Blueprints
 
 Ready-made automation blueprints (e.g. a daily full-power boiler heat-up, or
