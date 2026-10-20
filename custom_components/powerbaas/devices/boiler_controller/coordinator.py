@@ -40,6 +40,8 @@ from .const import (
     CONF_BATTERY_POWER_SENSOR,
     CONF_BATTERY_SENSOR_TYPE,
     CONF_BATTERY_SOC_SENSOR,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
     CONF_DEVICE_URL,
     CONF_POLL_INTERVAL,
     CONF_POWER_SENSOR,
@@ -146,6 +148,10 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         self.battery_max_charge_watts = float(
             data.get(CONF_BATTERY_MAX_CHARGE_WATTS, DEFAULT_BATTERY_MAX_CHARGE_WATTS)
         )
+        taper_soc = data.get(CONF_BATTERY_TAPER_SOC)
+        taper_watts = data.get(CONF_BATTERY_TAPER_WATTS)
+        self.battery_taper_soc = float(taper_soc) if taper_soc is not None else None
+        self.battery_taper_watts = float(taper_watts) if taper_watts is not None else None
         self.safety_margin_watts = float(data.get(CONF_SAFETY_MARGIN_WATTS, DEFAULT_SAFETY_MARGIN_WATTS))
         self.poll_interval = poll_interval
         self.device_client = BCClient(hass, device_url)
@@ -572,6 +578,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         """Return the charge headroom to hold back for the battery.
 
         Zero when the battery is full or already at its max charge power.
+        Between the taper level and full, only up to the taper watts.
         With a charge level sensor the headroom is otherwise always
         reserved. Without one, it's reserved while the battery is still
         ramping up or switching over from discharging; if it sits still
@@ -590,6 +597,18 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             self._battery_ref = None
             self._battery_stalled_at = None
             return 0.0
+
+        # Near full the battery tops off (or calibrates) slowly: hold back
+        # just enough for that, the boiler gets the rest.
+        if (
+            soc is not None
+            and self.battery_taper_soc is not None
+            and self.battery_taper_watts is not None
+            and soc >= self.battery_taper_soc
+        ):
+            self._battery_ref = None
+            self._battery_stalled_at = None
+            return min(headroom, max(0.0, self.battery_taper_watts - max(0.0, charge_watts)))
 
         # With a charge level sensor the battery keeps its headroom until it
         # counts as full - no guessing from its power, which pauses for up

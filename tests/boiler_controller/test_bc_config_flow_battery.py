@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from custom_components.powerbaas.devices.boiler_controller.config_flow import (
     BoilerControllerFlowMixin,
     BoilerControllerOptionsFlow,
@@ -21,6 +23,8 @@ from custom_components.powerbaas.devices.boiler_controller.const import (
     CONF_BATTERY_POWER_SENSOR,
     CONF_BATTERY_SENSOR_TYPE,
     CONF_BATTERY_SOC_SENSOR,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
     CONF_POWER_SENSOR,
     CONF_SAFETY_MARGIN_WATTS,
 )
@@ -180,3 +184,92 @@ async def test_options_flow_switching_to_no_battery_clears_battery_settings(hass
     assert new_data[CONF_SAFETY_MARGIN_WATTS] == 50
     for key in (CONF_BATTERY_POWER_SENSOR, CONF_BATTERY_SOC_SENSOR, CONF_BATTERY_MAX_CHARGE_WATTS):
         assert key not in new_data
+
+
+def _net_input(**extra) -> dict:
+    return _battery_settings(**{
+        CONF_BATTERY_POWER_SENSOR: "sensor.battery",
+        CONF_BATTERY_CHARGE_NEGATIVE: False,
+        CONF_BATTERY_SOC_SENSOR: "sensor.soc",
+        **extra,
+    })
+
+
+async def test_config_flow_stores_battery_taper(hass) -> None:
+    flow = _FakeFlow(hass)
+    await flow.async_step_battery_priority(_priority_input(BATTERY_SENSOR_TYPE_NET))
+
+    await flow.async_step_battery_sensor_net(
+        _net_input(**{CONF_BATTERY_TAPER_SOC: 95.0, CONF_BATTERY_TAPER_WATTS: 500.0})
+    )
+
+    assert flow.created[CONF_BATTERY_TAPER_SOC] == 95
+    assert flow.created[CONF_BATTERY_TAPER_WATTS] == 500
+
+
+async def test_config_flow_battery_taper_left_empty(hass) -> None:
+    flow = _FakeFlow(hass)
+    await flow.async_step_battery_priority(_priority_input(BATTERY_SENSOR_TYPE_NET))
+
+    await flow.async_step_battery_sensor_net(_net_input())
+
+    assert CONF_BATTERY_TAPER_SOC not in flow.created
+    assert CONF_BATTERY_TAPER_WATTS not in flow.created
+
+
+@pytest.mark.parametrize(
+    ("extra", "errors"),
+    [
+        ({CONF_BATTERY_TAPER_SOC: 95.0}, {CONF_BATTERY_TAPER_WATTS: "taper_incomplete"}),
+        ({CONF_BATTERY_TAPER_WATTS: 500.0}, {CONF_BATTERY_TAPER_SOC: "taper_incomplete"}),
+        (
+            {CONF_BATTERY_TAPER_SOC: 99.0, CONF_BATTERY_TAPER_WATTS: 500.0},
+            {CONF_BATTERY_TAPER_SOC: "taper_not_below_full"},
+        ),
+        (
+            {CONF_BATTERY_SOC_SENSOR: None, CONF_BATTERY_TAPER_SOC: 95.0, CONF_BATTERY_TAPER_WATTS: 500.0},
+            {CONF_BATTERY_TAPER_SOC: "taper_needs_soc_sensor"},
+        ),
+    ],
+)
+async def test_battery_taper_validation(hass, extra: dict, errors: dict) -> None:
+    flow = _FakeFlow(hass)
+    await flow.async_step_battery_priority(_priority_input(BATTERY_SENSOR_TYPE_SPLIT))
+
+    result = await flow.async_step_battery_sensor_split(
+        _battery_settings(**{
+            CONF_BATTERY_CHARGE_SENSOR: "sensor.charge",
+            CONF_BATTERY_DISCHARGE_SENSOR: "sensor.discharge",
+            CONF_BATTERY_SOC_SENSOR: "sensor.soc",
+            **extra,
+        })
+    )
+
+    assert result["errors"] == errors
+    assert flow.created is None
+
+
+async def test_options_flow_switching_to_no_battery_clears_taper(hass) -> None:
+    entry = SimpleNamespace(
+        entry_id="entry1",
+        unique_id="pb-bc-1",
+        options={},
+        data={
+            CONF_POWER_SENSOR: NET_SENSOR,
+            CONF_BATTERY_SENSOR_TYPE: BATTERY_SENSOR_TYPE_NET,
+            CONF_BATTERY_POWER_SENSOR: "sensor.battery",
+            CONF_BATTERY_TAPER_SOC: 95,
+            CONF_BATTERY_TAPER_WATTS: 500,
+        },
+    )
+    flow = BoilerControllerOptionsFlow(entry)
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_update_entry=MagicMock(), async_reload=AsyncMock())
+    )
+    flow.async_create_entry = lambda **kwargs: {"type": "create_entry"}
+
+    await flow.async_step_battery_priority(_priority_input(BATTERY_SENSOR_TYPE_NONE))
+
+    new_data = flow.hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    assert CONF_BATTERY_TAPER_SOC not in new_data
+    assert CONF_BATTERY_TAPER_WATTS not in new_data

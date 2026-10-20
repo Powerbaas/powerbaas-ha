@@ -36,6 +36,12 @@ CONF_BATTERY_DISCHARGE_SENSOR = "battery_discharge_sensor"
 CONF_BATTERY_SOC_SENSOR = "battery_soc_sensor"
 CONF_BATTERY_FULL_SOC = "battery_full_soc"
 CONF_BATTERY_MAX_CHARGE_WATTS = "battery_max_charge_watts"
+# Optional near-full taper: from CONF_BATTERY_TAPER_SOC up to full, only
+# CONF_BATTERY_TAPER_WATTS (including what the battery already takes) stays
+# reserved instead of the whole max charge power, since a battery tops off
+# (or calibrates) slowly there. Unset (both None) disables it.
+CONF_BATTERY_TAPER_SOC = "battery_taper_soc"
+CONF_BATTERY_TAPER_WATTS = "battery_taper_watts"
 # Watts Auto mode always leaves unused, battery or not - a buffer against
 # brief grid import while the boiler is still ramping down.
 CONF_SAFETY_MARGIN_WATTS = "safety_margin_watts"

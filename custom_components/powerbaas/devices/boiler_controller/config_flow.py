@@ -28,6 +28,8 @@ from .const import (
     CONF_BATTERY_POWER_SENSOR,
     CONF_BATTERY_SENSOR_TYPE,
     CONF_BATTERY_SOC_SENSOR,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
     CONF_SAFETY_MARGIN_WATTS,
     DEFAULT_BATTERY_FULL_SOC,
     DEFAULT_BATTERY_MAX_CHARGE_WATTS,
@@ -219,6 +221,8 @@ _BATTERY_KEYS = (
     CONF_BATTERY_SOC_SENSOR,
     CONF_BATTERY_FULL_SOC,
     CONF_BATTERY_MAX_CHARGE_WATTS,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
 )
 
 
@@ -229,6 +233,32 @@ def _watts_selector(max_watts: int) -> selector.NumberSelector:
             mode=selector.NumberSelectorMode.BOX,
         )
     )
+
+
+def _soc_selector(min_soc: int) -> selector.NumberSelector:
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=min_soc, max=100, step=1, unit_of_measurement="%",
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _validate_battery_settings(user_input: dict) -> dict:
+    """Taper level and watts go together, below full, and need a SoC sensor."""
+    taper_soc = user_input.get(CONF_BATTERY_TAPER_SOC)
+    taper_watts = user_input.get(CONF_BATTERY_TAPER_WATTS)
+    if taper_soc is None and taper_watts is None:
+        return {}
+    if taper_soc is None:
+        return {CONF_BATTERY_TAPER_SOC: "taper_incomplete"}
+    if taper_watts is None:
+        return {CONF_BATTERY_TAPER_WATTS: "taper_incomplete"}
+    if not user_input.get(CONF_BATTERY_SOC_SENSOR):
+        return {CONF_BATTERY_TAPER_SOC: "taper_needs_soc_sensor"}
+    if taper_soc >= user_input[CONF_BATTERY_FULL_SOC]:
+        return {CONF_BATTERY_TAPER_SOC: "taper_not_below_full"}
+    return {}
 
 
 def _optional_with_default(key: str, default) -> vol.Optional:
@@ -265,15 +295,16 @@ class BatteryPriorityStepsMixin:
             vol.Required(
                 CONF_BATTERY_FULL_SOC,
                 default=current.get(CONF_BATTERY_FULL_SOC, DEFAULT_BATTERY_FULL_SOC),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=50, max=100, step=1, unit_of_measurement="%",
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
+            ): _soc_selector(50),
             vol.Required(
                 CONF_BATTERY_MAX_CHARGE_WATTS,
                 default=current.get(CONF_BATTERY_MAX_CHARGE_WATTS, DEFAULT_BATTERY_MAX_CHARGE_WATTS),
+            ): _watts_selector(10000),
+            _optional_with_default(
+                CONF_BATTERY_TAPER_SOC, current.get(CONF_BATTERY_TAPER_SOC)
+            ): _soc_selector(1),
+            _optional_with_default(
+                CONF_BATTERY_TAPER_WATTS, current.get(CONF_BATTERY_TAPER_WATTS)
             ): _watts_selector(10000),
         }
 
@@ -281,6 +312,9 @@ class BatteryPriorityStepsMixin:
         self.data[CONF_BATTERY_SOC_SENSOR] = user_input.get(CONF_BATTERY_SOC_SENSOR)
         self.data[CONF_BATTERY_FULL_SOC] = int(user_input[CONF_BATTERY_FULL_SOC])
         self.data[CONF_BATTERY_MAX_CHARGE_WATTS] = int(user_input[CONF_BATTERY_MAX_CHARGE_WATTS])
+        for key in (CONF_BATTERY_TAPER_SOC, CONF_BATTERY_TAPER_WATTS):
+            value = user_input.get(key)
+            self.data[key] = int(value) if value is not None else None
 
     async def async_step_battery_priority(self, user_input=None):
         """Pick the battery sensor flavour (or none) and the safety margin.
@@ -322,9 +356,12 @@ class BatteryPriorityStepsMixin:
 
     async def async_step_battery_sensor_net(self, user_input=None):
         """Pick a single signed battery power sensor, SoC and limits."""
+        errors = {}
         current = self._battery_current()
 
         if user_input is not None:
+            errors = _validate_battery_settings(user_input)
+        if user_input is not None and not errors:
             self.data[CONF_BATTERY_POWER_SENSOR] = user_input[CONF_BATTERY_POWER_SENSOR]
             self.data[CONF_BATTERY_CHARGE_NEGATIVE] = bool(user_input[CONF_BATTERY_CHARGE_NEGATIVE])
             self.data[CONF_BATTERY_CHARGE_SENSOR] = None
@@ -342,7 +379,9 @@ class BatteryPriorityStepsMixin:
             ): selector.BooleanSelector(),
             **self._battery_settings_schema(current),
         })
-        return self.async_show_form(step_id="battery_sensor_net", data_schema=schema)
+        return self.async_show_form(
+            step_id="battery_sensor_net", data_schema=schema, errors=errors
+        )
 
     async def async_step_battery_sensor_split(self, user_input=None):
         """Pick separate battery charge and discharge sensors, SoC and limits."""
@@ -353,6 +392,8 @@ class BatteryPriorityStepsMixin:
             if user_input[CONF_BATTERY_CHARGE_SENSOR] == user_input[CONF_BATTERY_DISCHARGE_SENSOR]:
                 errors[CONF_BATTERY_DISCHARGE_SENSOR] = "sensors_must_differ"
             else:
+                errors = _validate_battery_settings(user_input)
+            if not errors:
                 self.data[CONF_BATTERY_CHARGE_SENSOR] = user_input[CONF_BATTERY_CHARGE_SENSOR]
                 self.data[CONF_BATTERY_DISCHARGE_SENSOR] = user_input[CONF_BATTERY_DISCHARGE_SENSOR]
                 self.data[CONF_BATTERY_POWER_SENSOR] = None
