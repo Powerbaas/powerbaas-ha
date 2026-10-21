@@ -62,6 +62,8 @@ How the surplus is split (example: panels 1200 W, battery max 800 W):
 - **Battery full** - the boiler gets the full surplus.
 - **Battery discharging** - the boiler backs off by that amount.
 
+With a battery configured, an idle boiler only starts once two Auto ticks in a row (~10 s apart) show surplus for it. The grid meter and the battery sensor update at different moments, so right after the battery changes its power, one tick can count the same watts twice (as export and as charge the battery already takes) and show surplus that isn't there. Adjusting or stopping a running boiler stays immediate, and without a battery the boiler starts right away.
+
 If the battery sensors are unavailable, the controller falls back to plain grid surplus (the battery then temporarily loses priority, grid import isn't affected).
 
 **Safety margin** (W, default 0) is always left unused in Auto mode, with or without a battery - a buffer against brief grid import while the boiler is still ramping down after e.g. a cloud.

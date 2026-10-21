@@ -32,10 +32,14 @@ def _zendure_coordinator(soc: str | None):
     return coordinator
 
 
-async def _step(coordinator, seconds: float, *, grid: str, battery: str) -> int:
+async def _step(
+    coordinator, seconds: float, *, grid: str, battery: str, confirm_start: bool = True
+) -> int:
     coordinator.hass._states["sensor.net_power"] = _FakeState(grid, "W")
     coordinator.hass._states["sensor.battery_power"] = _FakeState(battery, "W")
-    return await _run_at(coordinator, NOW + timedelta(seconds=seconds))
+    return await _run_at(
+        coordinator, NOW + timedelta(seconds=seconds), confirm_start=confirm_start
+    )
 
 
 @pytest.mark.parametrize("soc", ["14", None])

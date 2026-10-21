@@ -204,6 +204,9 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
         # Battery stall detection state - see _battery_reserve_watts.
         self._battery_ref: tuple[float, Any] | None = None
         self._battery_stalled_at = None
+        # Auto start confirmation - see _async_update.
+        self._auto_heating = False
+        self._auto_start_pending = False
 
         self._calibration_lock = asyncio.Lock()
         self._calibration_cancel_requested = False
@@ -398,9 +401,12 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
                 return
 
             control_mode = data.get("control_mode")
-            if control_mode != BOILER_MODE_AUTO and data.get("available_surplus") is not None:
-                # Only meaningful while Auto is actually using it.
-                self.data = {**self.data, "available_surplus": None}
+            if control_mode != BOILER_MODE_AUTO:
+                self._auto_heating = False
+                self._auto_start_pending = False
+                if data.get("available_surplus") is not None:
+                    # Only meaningful while Auto is actually using it.
+                    self.data = {**self.data, "available_surplus": None}
 
             if control_mode == BOILER_MODE_OFF:
                 await self._set_heating_percentage(0, source=BOILER_MODE_OFF)
@@ -433,6 +439,25 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             available_surplus = self._compute_available_surplus(surplus, boiler_watts)
             max_heating_watts = data.get("max_heating_watts", 0)
             available_watts = max(0, min(max_heating_watts, int(boiler_watts + available_surplus)))
+
+            # The grid and battery sensors update at different moments: right
+            # after the battery changes power, one tick can count the same
+            # watts twice (as export and as charge already taken) and show
+            # surplus that isn't there. So with a battery the boiler only
+            # starts once two ticks in a row agree; adjusting or stopping a
+            # running boiler stays immediate.
+            starting = (
+                self.battery_sensor_type != BATTERY_SENSOR_TYPE_NONE
+                and available_watts > 0
+                and not self._auto_heating
+            )
+            if starting and not self._auto_start_pending:
+                _LOGGER.debug("Auto mode: %dW available - confirming on the next tick before starting", available_watts)
+                self._auto_start_pending = True
+                available_watts = 0
+            else:
+                self._auto_start_pending = False
+
             min_heating_watts = data.get("min_heating_watts", 0)
             if min_heating_watts:
                 available_watts = max(available_watts, min_heating_watts)
@@ -446,6 +471,7 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
             )
 
             await self._send_target_watts(available_watts)
+            self._auto_heating = available_watts > 0
             # Mirror the auto-computed value into the same field the Manual
             # mode number entity reads/writes, so "Target Power" shows what
             # every mode is doing, not just Manual (the caller's finally
