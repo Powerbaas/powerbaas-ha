@@ -160,6 +160,8 @@ def _make_coordinator(
     coordinator.safety_margin_watts = 0.0
     coordinator._battery_ref = None
     coordinator._battery_stalled_at = None
+    coordinator._auto_heating = False
+    coordinator._auto_start_pending = False
     # Minimal DataUpdateCoordinator internals needed by
     # async_set_updated_data()/async_update_listeners() (bypassed __init__).
     coordinator._unsub_refresh = None
