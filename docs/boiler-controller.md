@@ -50,8 +50,9 @@ Optional, set in the last step of the config/options flow. If you have a home ba
 The controller needs:
 
 - **Battery power** - either one sensor (charging positive, discharging negative; a toggle flips this if your battery reports it the other way round) or two separate sensors for charge and discharge power (both always >= 0, e.g. Zendure).
-- **Battery charge level** (%) - optional but recommended; from **Battery counts as full from** (default 99%) the boiler gets the full surplus. Below that, the battery keeps priority no matter what its power does - batteries like Zendure pause for up to minutes while switching between charging and discharging, and the boiler must not grab the surplus in the meantime.
+- **Battery charge level** (%) - optional but recommended; from **Battery counts as full from** (default 99%) the boiler gets the full surplus. Set this to the maximum charge level configured in your battery itself - if it's higher, the boiler waits for a level the battery never reaches. Below that, the battery keeps priority no matter what its power does - batteries like Zendure pause for up to minutes while switching between charging and discharging, and the boiler must not grab the surplus in the meantime.
 - **Battery max charge power** (default 800 W).
+- **Slow charging from** (%) + **Charge power while slow charging** (W) - optional, both or neither, needs the charge level sensor. Many batteries charge slower near the top (topping off, calibrating). From this level up to full, only this charge power (including what the battery already takes) is held back for the battery instead of its full max charge power; the boiler gets the rest. Example: slow from 95% at 500 W, full at 100%, battery at 98% charging 300 W, 1200 W export - 200 W stays reserved, the boiler gets 1000 W. Leave empty if your battery stops at a lower limit (e.g. 80%); just set **Battery counts as full from** to that.
 
 How the surplus is split (example: panels 1200 W, battery max 800 W):
 
@@ -60,6 +61,8 @@ How the surplus is split (example: panels 1200 W, battery max 800 W):
 - **Battery stuck at 500 W, without a charge level sensor** (calibrating, almost full, temperature-limited, a charge limit) - if its charge power stays put for 2 minutes while surplus is left for it, the boiler takes that 300 W too. A battery that's still switching over from discharging to charging (which can take a minute, e.g. Zendure) isn't treated as stuck. Every 5 minutes the headroom is offered to the battery again, and the stall clears as soon as there's no surplus left (e.g. a cloud).
 - **Battery full** - the boiler gets the full surplus.
 - **Battery discharging** - the boiler backs off by that amount.
+
+With a battery configured, an idle boiler only starts once two Auto ticks in a row (~10 s apart) show surplus for it. The grid meter and the battery sensor update at different moments, so right after the battery changes its power, one tick can count the same watts twice (as export and as charge the battery already takes) and show surplus that isn't there. Adjusting or stopping a running boiler stays immediate, and without a battery the boiler starts right away.
 
 If the battery sensors are unavailable, the controller falls back to plain grid surplus (the battery then temporarily loses priority, grid import isn't affected).
 

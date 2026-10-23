@@ -155,9 +155,13 @@ def _make_coordinator(
     coordinator.battery_soc_sensor_id = None
     coordinator.battery_full_soc = 99.0
     coordinator.battery_max_charge_watts = 800.0
+    coordinator.battery_taper_soc = None
+    coordinator.battery_taper_watts = None
     coordinator.safety_margin_watts = 0.0
     coordinator._battery_ref = None
     coordinator._battery_stalled_at = None
+    coordinator._auto_heating = False
+    coordinator._auto_start_pending = False
     # Minimal DataUpdateCoordinator internals needed by
     # async_set_updated_data()/async_update_listeners() (bypassed __init__).
     coordinator._unsub_refresh = None
