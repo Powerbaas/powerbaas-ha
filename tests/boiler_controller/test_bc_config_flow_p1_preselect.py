@@ -73,7 +73,7 @@ def _schema_default(form: dict, key: str):
 def _dropdown_values(form: dict, key: str) -> list[str]:
     for marker, value in form["data_schema"].schema.items():
         if marker == key:
-            return [opt["value"] for opt in value.config["options"]]
+            return sorted(value.config["include_entities"])
     raise KeyError(key)
 
 
@@ -89,7 +89,7 @@ async def test_ignores_disabled_p1_sensor(hass) -> None:
     assert _find_powerbaas_p1_power_sensor(hass) is None
 
 
-async def test_config_flow_preselects_p1_and_lists_it_first(hass) -> None:
+async def test_config_flow_preselects_p1(hass) -> None:
     hass.states.async_set(OTHER_SENSOR, "300", {"unit_of_measurement": "W"})
     p1_sensor = _add_p1(hass)
     flow = _FakeFlow(hass)
@@ -97,7 +97,22 @@ async def test_config_flow_preselects_p1_and_lists_it_first(hass) -> None:
     form = await flow.async_step_power_sensor_net()
 
     assert _schema_default(form, CONF_POWER_SENSOR) == p1_sensor
-    assert _dropdown_values(form, CONF_POWER_SENSOR) == [p1_sensor, OTHER_SENSOR]
+    assert _dropdown_values(form, CONF_POWER_SENSOR) == sorted([p1_sensor, OTHER_SENSOR])
+
+
+async def test_power_sensor_list_excludes_energy_totals(hass) -> None:
+    hass.states.async_set(OTHER_SENSOR, "300", {"unit_of_measurement": "W"})
+    hass.states.async_set("sensor.solar_power_kw", "1.2", {"unit_of_measurement": "kW"})
+    hass.states.async_set("sensor.vermogen", "50", {"device_class": "power"})
+    hass.states.async_set("sensor.solar_total_energy", "12.3", {"unit_of_measurement": "kWh"})
+    hass.states.async_set("sensor.energy_wh", "1200", {"unit_of_measurement": "Wh"})
+    flow = _FakeFlow(hass)
+
+    form = await flow.async_step_power_sensor_net()
+
+    assert _dropdown_values(form, CONF_POWER_SENSOR) == sorted(
+        [OTHER_SENSOR, "sensor.solar_power_kw", "sensor.vermogen"]
+    )
 
 
 async def test_config_flow_without_p1_has_no_default(hass) -> None:

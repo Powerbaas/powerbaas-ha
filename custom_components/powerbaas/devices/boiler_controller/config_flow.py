@@ -49,6 +49,8 @@ from ..p1_meter.const import P1_POWER_USAGE_UNIQUE_ID_SUFFIX
 
 _LOGGER = logging.getLogger(__name__)
 
+_POWER_UNITS = {"W", "kW", "MW"}
+
 
 def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_id: str | None = None):
     """Return an existing entry that already manages this BC device."""
@@ -127,47 +129,29 @@ class DeviceValidationMixin:
         return None
 
     async def _get_return_sensors(self):
-        """Get list of candidate power-like sensors from HA.
+        """Get list of candidate power sensors from HA.
 
-        Includes both dedicated return/usage sensors (always positive) and
-        net power sensors (negative when exporting); the user picks which
-        flavour they configured via the power sensor type field. A Powerbaas
-        P1 Meter's net power sensor is always listed first.
+        Only instantaneous power (W/kW/MW) qualifies - energy totals (Wh/kWh)
+        are excluded. Includes both dedicated return/usage sensors (always
+        positive) and net power sensors (negative when exporting); the user
+        picks which flavour they configured via the power sensor type field.
         """
-        sensors = {}
-        p1_sensor = _find_powerbaas_p1_power_sensor(self.hass)
-        if p1_sensor:
-            state = self.hass.states.get(p1_sensor)
-            friendly_name = state.attributes.get("friendly_name", p1_sensor) if state else p1_sensor
-            sensors[p1_sensor] = f"{friendly_name} ({p1_sensor}) [W] - Powerbaas P1"
+        sensors = []
         for entity_id in self.hass.states.async_entity_ids("sensor"):
-            if entity_id in sensors:
-                continue
             state = self.hass.states.get(entity_id)
             if not state:
                 continue
-            if any(
-                keyword in entity_id.lower()
-                for keyword in [
-                    "power",
-                    "watt",
-                    "electricity",
-                    "current_consumption",
-                    "current_production",
-                    "energy",
-                    "verbruik",
-                    "opwek",
-                    "net_power",
-                ]
-            ):
-                try:
-                    float(state.state)
-                    unit = state.attributes.get("unit_of_measurement", "")
-                    if any(u in unit.lower() for u in ["w", "kw", "watt"]):
-                        friendly_name = state.attributes.get("friendly_name", entity_id)
-                        sensors[entity_id] = f"{friendly_name} ({entity_id}) [{unit}]"
-                except (ValueError, TypeError):
-                    continue
+            unit = state.attributes.get("unit_of_measurement")
+            if unit not in _POWER_UNITS and state.attributes.get("device_class") != "power":
+                continue
+            try:
+                float(state.state)
+            except (ValueError, TypeError):
+                continue
+            sensors.append(entity_id)
+        p1_sensor = _find_powerbaas_p1_power_sensor(self.hass)
+        if p1_sensor and p1_sensor not in sensors:
+            sensors.append(p1_sensor)
         return sensors
 
     def _sensor_type_selector(self) -> selector.SelectSelector:
@@ -199,16 +183,10 @@ class DeviceValidationMixin:
             return vol.Required(key, default=default)
         return vol.Required(key)
 
-    def _sensor_dropdown(self, sensors: dict, default=None):
-        """Build a dropdown selector from the candidate sensors mapping."""
-        return selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=[
-                    {"value": key, "label": value}
-                    for key, value in sensors.items()
-                ],
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
+    def _sensor_dropdown(self, sensors: list[str]):
+        """Searchable, sorted entity picker limited to the candidate sensors."""
+        return selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", include_entities=sensors)
         )
 
 
