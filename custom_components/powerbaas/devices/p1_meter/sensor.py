@@ -4,13 +4,17 @@ from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.util import dt as dt_util
 
 from ...const import DOMAIN
+from . import solar_push
 from .const import (
     BATTERY_SENSORS,
+    CONF_SOLAR_PUSH_ENABLED,
+    CONF_SOLAR_WEBHOOK_ID,
     MAIN_SENSORS,
     DIAGNOSTIC_SENSORS,
     COMBINED_SENSORS,
@@ -89,6 +93,23 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 enabled_by_default=enabled_by_default,
             )
         )
+
+    solar_url_unique_id = f"{entry.entry_id}_solar_push_url"
+    if entry.data.get(CONF_SOLAR_PUSH_ENABLED) and entry.data.get(CONF_SOLAR_WEBHOOK_ID):
+        entities.append(
+            PowerBaasSolarUrlSensor(
+                solar_url_unique_id,
+                solar_push.solar_push_url(hass, entry.data[CONF_SOLAR_WEBHOOK_ID]),
+                solar_device_info,
+            )
+        )
+    else:
+        # Turned off in the options flow: drop the URL sensor instead of
+        # leaving it behind as a stale "unavailable" entity.
+        entity_registry = er.async_get(hass)
+        stale_entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, solar_url_unique_id)
+        if stale_entity_id is not None:
+            entity_registry.async_remove(stale_entity_id)
 
     for name, path_a, path_b, unit, device_class, state_class, multiplier, entity_category, icon, unique_suffix, enabled_by_default in COMBINED_SENSORS:
         entities.append(
@@ -222,6 +243,24 @@ class PowerBaasStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         return "Online" if self.coordinator.device_online else "Offline"
+
+
+class PowerBaasSolarUrlSensor(SensorEntity):
+    """The URL to enter in the P1's custom solar integration (see solar_push.py).
+
+    Not a CoordinatorEntity: the value is fixed for the lifetime of the
+    entry and has nothing to do with the P1 being reachable.
+    """
+
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:link-variant"
+
+    def __init__(self, unique_id, url, device_info):
+        self._attr_name = "Solar URL"
+        self._attr_unique_id = unique_id
+        self._attr_native_value = url
+        self._attr_device_info = device_info
 
 
 class PowerBaasSensor(CoordinatorEntity, SensorEntity):
