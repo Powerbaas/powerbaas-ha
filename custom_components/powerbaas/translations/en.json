@@ -18,7 +18,35 @@
         "data": {
           "host": "Host URL",
           "name": "Name",
-          "scan_interval": "Update interval (seconds, 2-60)"
+          "scan_interval": "Update interval (seconds, 2-60)",
+          "solar_push_enabled": "Send solar from Home Assistant to the P1"
+        },
+        "data_description": {
+          "solar_push_enabled": "Already have your solar panels in Home Assistant? The P1 can read them through its custom solar integration. You'll pick the sensors in the next step."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar source",
+        "description": "Pick the sensors of your solar panels. The P1 reads these values through a local URL. kW, kWh and MWh are converted to W and Wh automatically.",
+        "data": {
+          "solar_power_entity": "Current power",
+          "solar_energy_entity": "Total production"
+        },
+        "data_description": {
+          "solar_power_entity": "A power sensor (W or kW)",
+          "solar_energy_entity": "An energy sensor (Wh, kWh or MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL for the P1",
+        "description": "Enter the URL below in the custom solar integration of the Powerbaas P1. You can see it again later under Configure on the P1.",
+        "data": {
+          "solar_url": "Solar URL for the P1",
+          "solar_preview": "What the P1 gets right now"
+        },
+        "data_description": {
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password.",
+          "solar_preview": "HTTP 503 means one of the sensors has no value right now. The P1 gets values again once it does."
         }
       },
       "boiler_controller": {
@@ -105,14 +133,18 @@
           "battery_charge_negative": "Charging is reported as negative",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "battery_sensor_split": {
@@ -123,14 +155,18 @@
           "battery_discharge_sensor": "Discharge power sensor",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       }
     },
@@ -146,7 +182,12 @@
       "cannot_connect_airco": "Unable to reach the Airco Bridge",
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
-      "device_in_use": "This module is already configured"
+      "device_in_use": "This module is already configured",
+      "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
+      "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'",
+      "invalid_power_unit": "This sensor doesn't report power in W or kW",
+      "invalid_energy_unit": "This sensor doesn't report energy in Wh, kWh or MWh"
     },
     "abort": {
       "already_configured": "This Powerbaas device is already configured",
@@ -161,7 +202,37 @@
         "description": "Update the host URL for your Powerbaas device",
         "data": {
           "host": "Host URL",
-          "scan_interval": "Update interval (seconds, 2-60)"
+          "scan_interval": "Update interval (seconds, 2-60)",
+          "solar_push_enabled": "Send solar from Home Assistant to the P1",
+          "solar_url": "Solar URL for the P1"
+        },
+        "data_description": {
+          "solar_push_enabled": "Already have your solar panels in Home Assistant? The P1 can read them through its custom solar integration. You'll pick the sensors in the next step.",
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar source",
+        "description": "Pick the sensors of your solar panels. The P1 reads these values through a local URL. kW, kWh and MWh are converted to W and Wh automatically.",
+        "data": {
+          "solar_power_entity": "Current power",
+          "solar_energy_entity": "Total production"
+        },
+        "data_description": {
+          "solar_power_entity": "A power sensor (W or kW)",
+          "solar_energy_entity": "An energy sensor (Wh, kWh or MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL for the P1",
+        "description": "Enter the URL below in the custom solar integration of the Powerbaas P1. You can see it again later under Configure on the P1.",
+        "data": {
+          "solar_url": "Solar URL for the P1",
+          "solar_preview": "What the P1 gets right now"
+        },
+        "data_description": {
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password.",
+          "solar_preview": "HTTP 503 means one of the sensors has no value right now. The P1 gets values again once it does."
         }
       },
       "device_config": {
@@ -227,14 +298,18 @@
           "battery_charge_negative": "Charging is reported as negative",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_power_sensor": "The sensor with the battery's current power: positive while charging, negative while discharging.",
           "battery_charge_negative": "Turn on if your battery reports charging as a negative value instead.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       },
       "battery_sensor_split": {
@@ -245,14 +320,18 @@
           "battery_discharge_sensor": "Discharge power sensor",
           "battery_soc_sensor": "Battery charge level sensor (%)",
           "battery_full_soc": "Battery counts as full from",
-          "battery_max_charge_watts": "Battery max charge power"
+          "battery_max_charge_watts": "Battery max charge power",
+          "battery_taper_soc": "Slow charging from",
+          "battery_taper_watts": "Charge power while slow charging"
         },
         "data_description": {
           "battery_charge_sensor": "The sensor with the power going into the battery (charging), always 0 or positive.",
           "battery_discharge_sensor": "The sensor with the power coming out of the battery (discharging), always 0 or positive.",
           "battery_soc_sensor": "Recommended. The sensor showing how full the battery is, in %. With it the battery keeps priority until it counts as full. Without it the boiler also gets surplus once the battery's charge power stays put for 2 minutes.",
-          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Match it to the charge limit set in your battery (often 90-100%).",
-          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first."
+          "battery_full_soc": "From this charge level the battery counts as full and the boiler gets the full surplus. Must match the maximum charge level set in your battery (often 90-100%), otherwise the split is off: set too high, the boiler waits for a level the battery never reaches.",
+          "battery_max_charge_watts": "The most your battery charges with, in watts (e.g. 800 W). Surplus up to this amount is reserved for the battery first.",
+          "battery_taper_soc": "Optional, leave empty if not needed. From this charge level up to full, batteries often charge slower (topping off, calibrating). Only the charge power below is then held back for the battery and the boiler gets the rest. Must be below 'Battery counts as full from' and needs the charge level sensor. Not needed if your battery stops charging at a lower limit (e.g. 80%) - just set 'counts as full' to that.",
+          "battery_taper_watts": "Optional, fill in together with 'Slow charging from'. The most the battery may take while slow charging, in watts (e.g. 500 W), including what it's already charging with."
         }
       }
     },
@@ -268,7 +347,12 @@
       "cannot_connect_airco": "Unable to reach the Airco Bridge",
       "cannot_connect_rgb": "Unable to reach the Powerbaas RGB",
       "cannot_identify": "Unable to determine the module identity",
-      "device_in_use": "This module is already configured"
+      "device_in_use": "This module is already configured",
+      "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
+      "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'",
+      "invalid_power_unit": "This sensor doesn't report power in W or kW",
+      "invalid_energy_unit": "This sensor doesn't report energy in Wh, kWh or MWh"
     }
   },
   "entity": {

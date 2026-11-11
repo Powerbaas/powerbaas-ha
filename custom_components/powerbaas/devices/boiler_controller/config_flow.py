@@ -28,6 +28,8 @@ from .const import (
     CONF_BATTERY_POWER_SENSOR,
     CONF_BATTERY_SENSOR_TYPE,
     CONF_BATTERY_SOC_SENSOR,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
     CONF_SAFETY_MARGIN_WATTS,
     DEFAULT_BATTERY_FULL_SOC,
     DEFAULT_BATTERY_MAX_CHARGE_WATTS,
@@ -46,6 +48,8 @@ from .const import (
 from ..p1_meter.const import P1_POWER_USAGE_UNIQUE_ID_SUFFIX
 
 _LOGGER = logging.getLogger(__name__)
+
+_POWER_UNITS = {"W", "kW", "MW"}
 
 
 def _find_config_entry_for_device(hass, device_id: str | None, *, exclude_entry_id: str | None = None):
@@ -125,47 +129,29 @@ class DeviceValidationMixin:
         return None
 
     async def _get_return_sensors(self):
-        """Get list of candidate power-like sensors from HA.
+        """Get list of candidate power sensors from HA.
 
-        Includes both dedicated return/usage sensors (always positive) and
-        net power sensors (negative when exporting); the user picks which
-        flavour they configured via the power sensor type field. A Powerbaas
-        P1 Meter's net power sensor is always listed first.
+        Only instantaneous power (W/kW/MW) qualifies - energy totals (Wh/kWh)
+        are excluded. Includes both dedicated return/usage sensors (always
+        positive) and net power sensors (negative when exporting); the user
+        picks which flavour they configured via the power sensor type field.
         """
-        sensors = {}
-        p1_sensor = _find_powerbaas_p1_power_sensor(self.hass)
-        if p1_sensor:
-            state = self.hass.states.get(p1_sensor)
-            friendly_name = state.attributes.get("friendly_name", p1_sensor) if state else p1_sensor
-            sensors[p1_sensor] = f"{friendly_name} ({p1_sensor}) [W] - Powerbaas P1"
+        sensors = []
         for entity_id in self.hass.states.async_entity_ids("sensor"):
-            if entity_id in sensors:
-                continue
             state = self.hass.states.get(entity_id)
             if not state:
                 continue
-            if any(
-                keyword in entity_id.lower()
-                for keyword in [
-                    "power",
-                    "watt",
-                    "electricity",
-                    "current_consumption",
-                    "current_production",
-                    "energy",
-                    "verbruik",
-                    "opwek",
-                    "net_power",
-                ]
-            ):
-                try:
-                    float(state.state)
-                    unit = state.attributes.get("unit_of_measurement", "")
-                    if any(u in unit.lower() for u in ["w", "kw", "watt"]):
-                        friendly_name = state.attributes.get("friendly_name", entity_id)
-                        sensors[entity_id] = f"{friendly_name} ({entity_id}) [{unit}]"
-                except (ValueError, TypeError):
-                    continue
+            unit = state.attributes.get("unit_of_measurement")
+            if unit not in _POWER_UNITS and state.attributes.get("device_class") != "power":
+                continue
+            try:
+                float(state.state)
+            except (ValueError, TypeError):
+                continue
+            sensors.append(entity_id)
+        p1_sensor = _find_powerbaas_p1_power_sensor(self.hass)
+        if p1_sensor and p1_sensor not in sensors:
+            sensors.append(p1_sensor)
         return sensors
 
     def _sensor_type_selector(self) -> selector.SelectSelector:
@@ -197,16 +183,10 @@ class DeviceValidationMixin:
             return vol.Required(key, default=default)
         return vol.Required(key)
 
-    def _sensor_dropdown(self, sensors: dict, default=None):
-        """Build a dropdown selector from the candidate sensors mapping."""
-        return selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=[
-                    {"value": key, "label": value}
-                    for key, value in sensors.items()
-                ],
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
+    def _sensor_dropdown(self, sensors: list[str]):
+        """Searchable, sorted entity picker limited to the candidate sensors."""
+        return selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", include_entities=sensors)
         )
 
 
@@ -219,6 +199,8 @@ _BATTERY_KEYS = (
     CONF_BATTERY_SOC_SENSOR,
     CONF_BATTERY_FULL_SOC,
     CONF_BATTERY_MAX_CHARGE_WATTS,
+    CONF_BATTERY_TAPER_SOC,
+    CONF_BATTERY_TAPER_WATTS,
 )
 
 
@@ -229,6 +211,32 @@ def _watts_selector(max_watts: int) -> selector.NumberSelector:
             mode=selector.NumberSelectorMode.BOX,
         )
     )
+
+
+def _soc_selector(min_soc: int) -> selector.NumberSelector:
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=min_soc, max=100, step=1, unit_of_measurement="%",
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _validate_battery_settings(user_input: dict) -> dict:
+    """Taper level and watts go together, below full, and need a SoC sensor."""
+    taper_soc = user_input.get(CONF_BATTERY_TAPER_SOC)
+    taper_watts = user_input.get(CONF_BATTERY_TAPER_WATTS)
+    if taper_soc is None and taper_watts is None:
+        return {}
+    if taper_soc is None:
+        return {CONF_BATTERY_TAPER_SOC: "taper_incomplete"}
+    if taper_watts is None:
+        return {CONF_BATTERY_TAPER_WATTS: "taper_incomplete"}
+    if not user_input.get(CONF_BATTERY_SOC_SENSOR):
+        return {CONF_BATTERY_TAPER_SOC: "taper_needs_soc_sensor"}
+    if taper_soc >= user_input[CONF_BATTERY_FULL_SOC]:
+        return {CONF_BATTERY_TAPER_SOC: "taper_not_below_full"}
+    return {}
 
 
 def _optional_with_default(key: str, default) -> vol.Optional:
@@ -265,15 +273,16 @@ class BatteryPriorityStepsMixin:
             vol.Required(
                 CONF_BATTERY_FULL_SOC,
                 default=current.get(CONF_BATTERY_FULL_SOC, DEFAULT_BATTERY_FULL_SOC),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=50, max=100, step=1, unit_of_measurement="%",
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
+            ): _soc_selector(50),
             vol.Required(
                 CONF_BATTERY_MAX_CHARGE_WATTS,
                 default=current.get(CONF_BATTERY_MAX_CHARGE_WATTS, DEFAULT_BATTERY_MAX_CHARGE_WATTS),
+            ): _watts_selector(10000),
+            _optional_with_default(
+                CONF_BATTERY_TAPER_SOC, current.get(CONF_BATTERY_TAPER_SOC)
+            ): _soc_selector(1),
+            _optional_with_default(
+                CONF_BATTERY_TAPER_WATTS, current.get(CONF_BATTERY_TAPER_WATTS)
             ): _watts_selector(10000),
         }
 
@@ -281,6 +290,9 @@ class BatteryPriorityStepsMixin:
         self.data[CONF_BATTERY_SOC_SENSOR] = user_input.get(CONF_BATTERY_SOC_SENSOR)
         self.data[CONF_BATTERY_FULL_SOC] = int(user_input[CONF_BATTERY_FULL_SOC])
         self.data[CONF_BATTERY_MAX_CHARGE_WATTS] = int(user_input[CONF_BATTERY_MAX_CHARGE_WATTS])
+        for key in (CONF_BATTERY_TAPER_SOC, CONF_BATTERY_TAPER_WATTS):
+            value = user_input.get(key)
+            self.data[key] = int(value) if value is not None else None
 
     async def async_step_battery_priority(self, user_input=None):
         """Pick the battery sensor flavour (or none) and the safety margin.
@@ -322,9 +334,12 @@ class BatteryPriorityStepsMixin:
 
     async def async_step_battery_sensor_net(self, user_input=None):
         """Pick a single signed battery power sensor, SoC and limits."""
+        errors = {}
         current = self._battery_current()
 
         if user_input is not None:
+            errors = _validate_battery_settings(user_input)
+        if user_input is not None and not errors:
             self.data[CONF_BATTERY_POWER_SENSOR] = user_input[CONF_BATTERY_POWER_SENSOR]
             self.data[CONF_BATTERY_CHARGE_NEGATIVE] = bool(user_input[CONF_BATTERY_CHARGE_NEGATIVE])
             self.data[CONF_BATTERY_CHARGE_SENSOR] = None
@@ -342,7 +357,9 @@ class BatteryPriorityStepsMixin:
             ): selector.BooleanSelector(),
             **self._battery_settings_schema(current),
         })
-        return self.async_show_form(step_id="battery_sensor_net", data_schema=schema)
+        return self.async_show_form(
+            step_id="battery_sensor_net", data_schema=schema, errors=errors
+        )
 
     async def async_step_battery_sensor_split(self, user_input=None):
         """Pick separate battery charge and discharge sensors, SoC and limits."""
@@ -353,6 +370,8 @@ class BatteryPriorityStepsMixin:
             if user_input[CONF_BATTERY_CHARGE_SENSOR] == user_input[CONF_BATTERY_DISCHARGE_SENSOR]:
                 errors[CONF_BATTERY_DISCHARGE_SENSOR] = "sensors_must_differ"
             else:
+                errors = _validate_battery_settings(user_input)
+            if not errors:
                 self.data[CONF_BATTERY_CHARGE_SENSOR] = user_input[CONF_BATTERY_CHARGE_SENSOR]
                 self.data[CONF_BATTERY_DISCHARGE_SENSOR] = user_input[CONF_BATTERY_DISCHARGE_SENSOR]
                 self.data[CONF_BATTERY_POWER_SENSOR] = None

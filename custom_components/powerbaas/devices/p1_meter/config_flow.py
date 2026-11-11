@@ -5,10 +5,21 @@ from urllib.parse import urlparse
 import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers import selector
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+from homeassistant.util.unit_conversion import EnergyConverter, PowerConverter
 
 from ...const import DOMAIN, CONF_DEVICE_TYPE, DEVICE_TYPE_P1_METER
-from .const import DEFAULT_SCAN_INTERVAL, MIN_SCAN_INTERVAL, MAX_SCAN_INTERVAL
+from . import solar_push
+from .const import (
+    CONF_SOLAR_ENERGY_ENTITY,
+    CONF_SOLAR_POWER_ENTITY,
+    CONF_SOLAR_PUSH_ENABLED,
+    CONF_SOLAR_WEBHOOK_ID,
+    DEFAULT_SCAN_INTERVAL,
+    MAX_SCAN_INTERVAL,
+    MIN_SCAN_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_HOST = "http://192.168.x.x"
@@ -35,6 +46,79 @@ async def _test_connection(host):
     except Exception as err:
         _LOGGER.debug("Connection test failed for %s: %s", host, err)
         return False
+
+
+def _solar_source_selector(hass, device_class: str) -> selector.EntitySelector:
+    config = {"domain": "sensor", "device_class": device_class}
+    own = solar_push.own_solar_entity_ids(hass)
+    if own:
+        config["exclude_entities"] = own
+    return selector.EntitySelector(selector.EntitySelectorConfig(**config))
+
+
+def _solar_schema(hass, data: dict) -> vol.Schema:
+    """Both source sensors, prefilled from data when already chosen."""
+
+    def _required(key):
+        if data.get(key):
+            return vol.Required(key, default=data[key])
+        return vol.Required(key)
+
+    return vol.Schema({
+        _required(CONF_SOLAR_POWER_ENTITY): _solar_source_selector(hass, "power"),
+        _required(CONF_SOLAR_ENERGY_ENTITY): _solar_source_selector(hass, "energy"),
+    })
+
+
+def _validate_solar(hass, user_input: dict) -> dict:
+    errors = {}
+    if not solar_push.unit_is_valid(hass, user_input[CONF_SOLAR_POWER_ENTITY], PowerConverter):
+        errors[CONF_SOLAR_POWER_ENTITY] = "invalid_power_unit"
+    if not solar_push.unit_is_valid(hass, user_input[CONF_SOLAR_ENERGY_ENTITY], EnergyConverter):
+        errors[CONF_SOLAR_ENERGY_ENTITY] = "invalid_energy_unit"
+    return errors
+
+
+def _apply_solar(data: dict, user_input: dict) -> dict:
+    """data plus the chosen sensors and a webhook id - kept if one exists, so the URL in the P1 stays valid."""
+    return {
+        **data,
+        CONF_SOLAR_POWER_ENTITY: user_input[CONF_SOLAR_POWER_ENTITY],
+        CONF_SOLAR_ENERGY_ENTITY: user_input[CONF_SOLAR_ENERGY_ENTITY],
+        CONF_SOLAR_WEBHOOK_ID: data.get(CONF_SOLAR_WEBHOOK_ID) or solar_push.generate_webhook_id(),
+    }
+
+
+# Read-only form fields that only display a value (HA's standard way to show
+# one in a flow), never stored: the flow builds entry data from explicit keys.
+SOLAR_URL_FIELD = "solar_url"
+SOLAR_PREVIEW_FIELD = "solar_preview"
+
+
+def _read_only_text(text_type=selector.TextSelectorType.TEXT) -> selector.TextSelector:
+    return selector.TextSelector(selector.TextSelectorConfig(read_only=True, type=text_type))
+
+
+def _solar_url_field(hass, data: dict) -> dict:
+    """The read-only URL field for the P1, keyed for a vol.Schema."""
+    url = solar_push.solar_push_url(hass, data[CONF_SOLAR_WEBHOOK_ID])
+    return {vol.Optional(SOLAR_URL_FIELD, default=url): _read_only_text(selector.TextSelectorType.URL)}
+
+
+def _solar_url_schema(hass, data: dict) -> vol.Schema:
+    """The URL for the P1, plus what it would get right now (HTTP 503 if a sensor has no value)."""
+    payload = solar_push.build_payload(
+        hass, data[CONF_SOLAR_POWER_ENTITY], data[CONF_SOLAR_ENERGY_ENTITY]
+    )
+    preview = (
+        f'{{"current": {payload["current"]}, "total": {payload["total"]}}}'
+        if payload is not None
+        else "HTTP 503"
+    )
+    return vol.Schema({
+        **_solar_url_field(hass, data),
+        vol.Optional(SOLAR_PREVIEW_FIELD, default=preview): _read_only_text(),
+    })
 
 
 class P1MeterFlowMixin:
@@ -83,15 +167,46 @@ class P1MeterFlowMixin:
                 user_input["host"] = host
                 user_input["name"] = name
                 user_input[CONF_DEVICE_TYPE] = DEVICE_TYPE_P1_METER
+                user_input[CONF_SOLAR_PUSH_ENABLED] = bool(user_input.get(CONF_SOLAR_PUSH_ENABLED))
+                if user_input[CONF_SOLAR_PUSH_ENABLED]:
+                    self._p1_entry_data = user_input
+                    return await self.async_step_p1_meter_solar()
                 return self.async_create_entry(title=name, data=user_input)
 
         schema = vol.Schema({
             vol.Required("host", default=self.data.get("host", DEFAULT_HOST)): str,
             vol.Optional("name", default=DEFAULT_NAME): str,
             vol.Required("scan_interval", default=DEFAULT_SCAN_INTERVAL): SCAN_INTERVAL_SCHEMA,
+            vol.Optional(CONF_SOLAR_PUSH_ENABLED, default=False): bool,
         })
 
         return self.async_show_form(step_id="p1_meter", data_schema=schema, errors=errors)
+
+    async def async_step_p1_meter_solar(self, user_input=None):
+        """Pick the HA sensors the P1 gets its solar data from."""
+        errors = {}
+        if user_input is not None:
+            errors = _validate_solar(self.hass, user_input)
+            if not errors:
+                self._p1_entry_data = _apply_solar(self._p1_entry_data, user_input)
+                return await self.async_step_p1_meter_solar_url()
+
+        return self.async_show_form(
+            step_id="p1_meter_solar",
+            data_schema=_solar_schema(self.hass, user_input or self._p1_entry_data),
+            errors=errors,
+        )
+
+    async def async_step_p1_meter_solar_url(self, user_input=None):
+        """Show the URL to enter in the P1, then create the entry."""
+        data = self._p1_entry_data
+        if user_input is not None:
+            return self.async_create_entry(title=data["name"], data=data)
+
+        return self.async_show_form(
+            step_id="p1_meter_solar_url",
+            data_schema=_solar_url_schema(self.hass, data),
+        )
 
 
 class P1MeterOptionsFlow(config_entries.OptionsFlow):
@@ -117,22 +232,61 @@ class P1MeterOptionsFlow(config_entries.OptionsFlow):
                 new_data = dict(self.config_entry.data)
                 new_data["host"] = host
                 new_data["scan_interval"] = user_input["scan_interval"]
+                new_data[CONF_SOLAR_PUSH_ENABLED] = bool(user_input.get(CONF_SOLAR_PUSH_ENABLED))
 
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=new_data
-                )
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                if new_data[CONF_SOLAR_PUSH_ENABLED]:
+                    self._new_data = new_data
+                    return await self.async_step_p1_meter_solar()
+                return await self._async_save(new_data)
 
-                return self.async_create_entry(title="", data={})
-
-        schema = vol.Schema({
-            vol.Required("host", default=self.config_entry.data.get("host", DEFAULT_HOST)): str,
+        data = self.config_entry.data
+        fields = {
+            vol.Required("host", default=data.get("host", DEFAULT_HOST)): str,
             vol.Required(
                 "scan_interval",
-                default=self.config_entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL),
+                default=data.get("scan_interval", DEFAULT_SCAN_INTERVAL),
             ): SCAN_INTERVAL_SCHEMA,
-        })
+            vol.Optional(
+                CONF_SOLAR_PUSH_ENABLED,
+                default=data.get(CONF_SOLAR_PUSH_ENABLED, False),
+            ): bool,
+        }
+        # While solar is on, show its URL right under the checkbox.
+        if data.get(CONF_SOLAR_PUSH_ENABLED) and data.get(CONF_SOLAR_WEBHOOK_ID):
+            fields.update(_solar_url_field(self.hass, data))
 
-        return self.async_show_form(step_id="p1_meter_init", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="p1_meter_init", data_schema=vol.Schema(fields), errors=errors
+        )
 
     async_step_init = async_step_p1_meter_init
+
+    async def async_step_p1_meter_solar(self, user_input=None):
+        """Pick the HA sensors the P1 gets its solar data from."""
+        errors = {}
+        if user_input is not None:
+            errors = _validate_solar(self.hass, user_input)
+            if not errors:
+                self._new_data = _apply_solar(self._new_data, user_input)
+                return await self.async_step_p1_meter_solar_url()
+
+        return self.async_show_form(
+            step_id="p1_meter_solar",
+            data_schema=_solar_schema(self.hass, user_input or self._new_data),
+            errors=errors,
+        )
+
+    async def async_step_p1_meter_solar_url(self, user_input=None):
+        """Show the URL to enter in the P1, then save and reload."""
+        if user_input is not None:
+            return await self._async_save(self._new_data)
+
+        return self.async_show_form(
+            step_id="p1_meter_solar_url",
+            data_schema=_solar_url_schema(self.hass, self._new_data),
+        )
+
+    async def _async_save(self, new_data: dict):
+        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+        return self.async_create_entry(title="", data={})

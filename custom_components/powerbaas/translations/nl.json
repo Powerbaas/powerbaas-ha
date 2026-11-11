@@ -18,7 +18,35 @@
         "data": {
           "host": "Host-adres",
           "name": "Naam",
-          "scan_interval": "Update-interval (seconden, 2-60)"
+          "scan_interval": "Update-interval (seconden, 2-60)",
+          "solar_push_enabled": "Solar uit Home Assistant naar de P1 sturen"
+        },
+        "data_description": {
+          "solar_push_enabled": "Heb je je zonnepanelen al in Home Assistant? Dan kan de P1 ze ophalen via zijn custom solar integratie. In de volgende stap kies je de sensoren."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar bron",
+        "description": "Kies de sensoren van je zonnepanelen. De P1 haalt deze waarden op via een lokale URL. kW, kWh en MWh worden automatisch omgerekend naar W en Wh.",
+        "data": {
+          "solar_power_entity": "Huidig vermogen",
+          "solar_energy_entity": "Totale opbrengst"
+        },
+        "data_description": {
+          "solar_power_entity": "Een vermogenssensor (W of kW)",
+          "solar_energy_entity": "Een energiesensor (Wh, kWh of MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL voor de P1",
+        "description": "Vul de URL hieronder in bij de custom solar integratie in de Powerbaas P1. Je ziet hem later terug onder Configureren bij de P1.",
+        "data": {
+          "solar_url": "Solar-URL voor de P1",
+          "solar_preview": "Wat de P1 nu terugkrijgt"
+        },
+        "data_description": {
+          "solar_url": "Vul deze URL in bij de custom solar integratie in de P1. Hij werkt alleen op je lokale netwerk: behandel hem als een wachtwoord.",
+          "solar_preview": "HTTP 503 betekent dat een van de sensoren nu geen waarde heeft. De P1 krijgt weer waarden zodra die er zijn."
         }
       },
       "boiler_controller": {
@@ -105,14 +133,18 @@
           "battery_charge_negative": "Laden wordt als negatief gerapporteerd",
           "battery_soc_sensor": "Sensor laadstand batterij (%)",
           "battery_full_soc": "Batterij geldt als vol vanaf",
-          "battery_max_charge_watts": "Max laadvermogen batterij"
+          "battery_max_charge_watts": "Max laadvermogen batterij",
+          "battery_taper_soc": "Langzaam laden vanaf",
+          "battery_taper_watts": "Laadvermogen bij langzaam laden"
         },
         "data_description": {
           "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
           "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
           "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
-          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
-          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Moet gelijk zijn aan de maximale laadstand die in uw batterij is ingesteld (vaak 90-100%), anders klopt de verdeling niet: te hoog en de boiler wacht op een laadstand die de batterij nooit haalt.",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd.",
+          "battery_taper_soc": "Optioneel, laat leeg als u het niet nodig heeft. Van deze laadstand tot vol laden batterijen vaak langzamer (bijladen, kalibreren). Dan wordt alleen het laadvermogen hieronder voor de batterij vrijgehouden en krijgt de boiler de rest. Moet lager zijn dan 'Batterij geldt als vol vanaf' en werkt alleen met de sensor laadstand. Niet nodig als uw batterij bij een lagere grens (bijv. 80%) stopt met laden - zet 'geldt als vol' dan gewoon daarop.",
+          "battery_taper_watts": "Optioneel, samen invullen met 'Langzaam laden vanaf'. Het maximale vermogen dat de batterij bij langzaam laden mag nemen, in watt (bijv. 500 W), inclusief wat hij al laadt."
         }
       },
       "battery_sensor_split": {
@@ -123,14 +155,18 @@
           "battery_discharge_sensor": "Sensor ontlaadvermogen",
           "battery_soc_sensor": "Sensor laadstand batterij (%)",
           "battery_full_soc": "Batterij geldt als vol vanaf",
-          "battery_max_charge_watts": "Max laadvermogen batterij"
+          "battery_max_charge_watts": "Max laadvermogen batterij",
+          "battery_taper_soc": "Langzaam laden vanaf",
+          "battery_taper_watts": "Laadvermogen bij langzaam laden"
         },
         "data_description": {
           "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
           "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
           "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
-          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
-          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Moet gelijk zijn aan de maximale laadstand die in uw batterij is ingesteld (vaak 90-100%), anders klopt de verdeling niet: te hoog en de boiler wacht op een laadstand die de batterij nooit haalt.",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd.",
+          "battery_taper_soc": "Optioneel, laat leeg als u het niet nodig heeft. Van deze laadstand tot vol laden batterijen vaak langzamer (bijladen, kalibreren). Dan wordt alleen het laadvermogen hieronder voor de batterij vrijgehouden en krijgt de boiler de rest. Moet lager zijn dan 'Batterij geldt als vol vanaf' en werkt alleen met de sensor laadstand. Niet nodig als uw batterij bij een lagere grens (bijv. 80%) stopt met laden - zet 'geldt als vol' dan gewoon daarop.",
+          "battery_taper_watts": "Optioneel, samen invullen met 'Langzaam laden vanaf'. Het maximale vermogen dat de batterij bij langzaam laden mag nemen, in watt (bijv. 500 W), inclusief wat hij al laadt."
         }
       }
     },
@@ -146,7 +182,12 @@
       "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_connect_rgb": "Kan geen verbinding maken met de Powerbaas RGB",
       "cannot_identify": "Kan het module ID niet bepalen",
-      "device_in_use": "Deze module is al geconfigureerd"
+      "device_in_use": "Deze module is al geconfigureerd",
+      "taper_incomplete": "Vul zowel 'Langzaam laden vanaf' als het laadvermogen in, of laat beide leeg",
+      "taper_needs_soc_sensor": "Langzaam laden werkt alleen met de sensor laadstand batterij",
+      "taper_not_below_full": "'Langzaam laden vanaf' moet lager zijn dan 'Batterij geldt als vol vanaf'",
+      "invalid_power_unit": "Deze sensor geeft geen vermogen in W of kW",
+      "invalid_energy_unit": "Deze sensor geeft geen energie in Wh, kWh of MWh"
     },
     "abort": {
       "already_configured": "Dit Powerbaas-apparaat is al geconfigureerd",
@@ -161,7 +202,37 @@
         "description": "Werk het host-adres van je Powerbaas-apparaat bij",
         "data": {
           "host": "Host-adres",
-          "scan_interval": "Update-interval (seconden, 2-60)"
+          "scan_interval": "Update-interval (seconden, 2-60)",
+          "solar_push_enabled": "Solar uit Home Assistant naar de P1 sturen",
+          "solar_url": "Solar-URL voor de P1"
+        },
+        "data_description": {
+          "solar_push_enabled": "Heb je je zonnepanelen al in Home Assistant? Dan kan de P1 ze ophalen via zijn custom solar integratie. In de volgende stap kies je de sensoren.",
+          "solar_url": "Vul deze URL in bij de custom solar integratie in de P1. Hij werkt alleen op je lokale netwerk: behandel hem als een wachtwoord."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar bron",
+        "description": "Kies de sensoren van je zonnepanelen. De P1 haalt deze waarden op via een lokale URL. kW, kWh en MWh worden automatisch omgerekend naar W en Wh.",
+        "data": {
+          "solar_power_entity": "Huidig vermogen",
+          "solar_energy_entity": "Totale opbrengst"
+        },
+        "data_description": {
+          "solar_power_entity": "Een vermogenssensor (W of kW)",
+          "solar_energy_entity": "Een energiesensor (Wh, kWh of MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL voor de P1",
+        "description": "Vul de URL hieronder in bij de custom solar integratie in de Powerbaas P1. Je ziet hem later terug onder Configureren bij de P1.",
+        "data": {
+          "solar_url": "Solar-URL voor de P1",
+          "solar_preview": "Wat de P1 nu terugkrijgt"
+        },
+        "data_description": {
+          "solar_url": "Vul deze URL in bij de custom solar integratie in de P1. Hij werkt alleen op je lokale netwerk: behandel hem als een wachtwoord.",
+          "solar_preview": "HTTP 503 betekent dat een van de sensoren nu geen waarde heeft. De P1 krijgt weer waarden zodra die er zijn."
         }
       },
       "device_config": {
@@ -227,14 +298,18 @@
           "battery_charge_negative": "Laden wordt als negatief gerapporteerd",
           "battery_soc_sensor": "Sensor laadstand batterij (%)",
           "battery_full_soc": "Batterij geldt als vol vanaf",
-          "battery_max_charge_watts": "Max laadvermogen batterij"
+          "battery_max_charge_watts": "Max laadvermogen batterij",
+          "battery_taper_soc": "Langzaam laden vanaf",
+          "battery_taper_watts": "Laadvermogen bij langzaam laden"
         },
         "data_description": {
           "battery_power_sensor": "De sensor met het actuele vermogen van de batterij: positief bij laden, negatief bij ontladen.",
           "battery_charge_negative": "Zet aan als uw batterij laden juist als negatieve waarde rapporteert.",
           "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
-          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
-          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Moet gelijk zijn aan de maximale laadstand die in uw batterij is ingesteld (vaak 90-100%), anders klopt de verdeling niet: te hoog en de boiler wacht op een laadstand die de batterij nooit haalt.",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd.",
+          "battery_taper_soc": "Optioneel, laat leeg als u het niet nodig heeft. Van deze laadstand tot vol laden batterijen vaak langzamer (bijladen, kalibreren). Dan wordt alleen het laadvermogen hieronder voor de batterij vrijgehouden en krijgt de boiler de rest. Moet lager zijn dan 'Batterij geldt als vol vanaf' en werkt alleen met de sensor laadstand. Niet nodig als uw batterij bij een lagere grens (bijv. 80%) stopt met laden - zet 'geldt als vol' dan gewoon daarop.",
+          "battery_taper_watts": "Optioneel, samen invullen met 'Langzaam laden vanaf'. Het maximale vermogen dat de batterij bij langzaam laden mag nemen, in watt (bijv. 500 W), inclusief wat hij al laadt."
         }
       },
       "battery_sensor_split": {
@@ -245,14 +320,18 @@
           "battery_discharge_sensor": "Sensor ontlaadvermogen",
           "battery_soc_sensor": "Sensor laadstand batterij (%)",
           "battery_full_soc": "Batterij geldt als vol vanaf",
-          "battery_max_charge_watts": "Max laadvermogen batterij"
+          "battery_max_charge_watts": "Max laadvermogen batterij",
+          "battery_taper_soc": "Langzaam laden vanaf",
+          "battery_taper_watts": "Laadvermogen bij langzaam laden"
         },
         "data_description": {
           "battery_charge_sensor": "De sensor met het vermogen dat de batterij in gaat (laden), altijd 0 of positief.",
           "battery_discharge_sensor": "De sensor met het vermogen dat uit de batterij komt (ontladen), altijd 0 of positief.",
           "battery_soc_sensor": "Aanbevolen. De sensor die aangeeft hoe vol de batterij is, in %. Hiermee houdt de batterij voorrang tot hij als vol telt. Zonder deze sensor krijgt de boiler ook overschot als het laadvermogen van de batterij 2 minuten gelijk blijft.",
-          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Stem dit af op de laadgrens die in uw batterij is ingesteld (vaak 90-100%).",
-          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd."
+          "battery_full_soc": "Vanaf deze laadstand geldt de batterij als vol en krijgt de boiler het volledige overschot. Moet gelijk zijn aan de maximale laadstand die in uw batterij is ingesteld (vaak 90-100%), anders klopt de verdeling niet: te hoog en de boiler wacht op een laadstand die de batterij nooit haalt.",
+          "battery_max_charge_watts": "Het maximale vermogen waarmee uw batterij laadt, in watt (bijv. 800 W). Overschot tot dit vermogen wordt eerst voor de batterij gereserveerd.",
+          "battery_taper_soc": "Optioneel, laat leeg als u het niet nodig heeft. Van deze laadstand tot vol laden batterijen vaak langzamer (bijladen, kalibreren). Dan wordt alleen het laadvermogen hieronder voor de batterij vrijgehouden en krijgt de boiler de rest. Moet lager zijn dan 'Batterij geldt als vol vanaf' en werkt alleen met de sensor laadstand. Niet nodig als uw batterij bij een lagere grens (bijv. 80%) stopt met laden - zet 'geldt als vol' dan gewoon daarop.",
+          "battery_taper_watts": "Optioneel, samen invullen met 'Langzaam laden vanaf'. Het maximale vermogen dat de batterij bij langzaam laden mag nemen, in watt (bijv. 500 W), inclusief wat hij al laadt."
         }
       }
     },
@@ -268,7 +347,12 @@
       "cannot_connect_airco": "Kan geen verbinding maken met de Airco Bridge",
       "cannot_connect_rgb": "Kan geen verbinding maken met de Powerbaas RGB",
       "cannot_identify": "Kan het module ID niet bepalen",
-      "device_in_use": "Deze module is al geconfigureerd"
+      "device_in_use": "Deze module is al geconfigureerd",
+      "taper_incomplete": "Vul zowel 'Langzaam laden vanaf' als het laadvermogen in, of laat beide leeg",
+      "taper_needs_soc_sensor": "Langzaam laden werkt alleen met de sensor laadstand batterij",
+      "taper_not_below_full": "'Langzaam laden vanaf' moet lager zijn dan 'Batterij geldt als vol vanaf'",
+      "invalid_power_unit": "Deze sensor geeft geen vermogen in W of kW",
+      "invalid_energy_unit": "Deze sensor geeft geen energie in Wh, kWh of MWh"
     }
   },
   "entity": {

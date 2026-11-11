@@ -116,6 +116,8 @@ class BoilerControllerStatusSensor(CoordinatorEntity, SensorEntity):
             "battery_sensor_type": coordinator.battery_sensor_type,
             "battery_stalled": coordinator._battery_stalled_at is not None,
             "safety_margin_watts": coordinator.safety_margin_watts,
+            "battery_taper_soc": coordinator.battery_taper_soc,
+            "battery_taper_watts": coordinator.battery_taper_watts,
             "min_dimmer": None,
             "max_dimmer": None,
             "effective_min_dimmer": None,

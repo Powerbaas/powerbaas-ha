@@ -57,12 +57,20 @@ def _battery_coordinator(
     return coordinator
 
 
-async def _run_at(coordinator, when):
+async def _run_at(coordinator, when, *, confirm_start: bool = True):
+    """Run one Auto tick at ``when``.
+
+    With ``confirm_start`` a start held back for confirmation is confirmed
+    right away (a second tick at the same moment), so tests see the split
+    itself - test_bc_battery_sensor_lag covers the confirmation.
+    """
     with patch(
         "custom_components.powerbaas.devices.boiler_controller.coordinator.dt_util.utcnow",
         return_value=when,
     ):
         await coordinator._async_update()
+        if confirm_start and coordinator._auto_start_pending:
+            await coordinator._async_update()
     # 0W goes out as 0% (see _send_target_watts), so read the mirrored target.
     return coordinator.data["target_watts"]
 
