@@ -6,6 +6,7 @@ Connects your Powerbaas P1 meter device to Home Assistant, allowing you to monit
 
 - **Energy meter data**: power usage, delivered/returned energy (high/low tariff), gas consumption, per-phase voltage and current
 - **Solar production**: current output and total production, shown on their own "Solar" device
+- **Solar from Home Assistant**: already have your solar panels in Home Assistant? Home Assistant can serve them to the P1's custom solar integration (see [below](#solar-from-home-assistant-to-the-p1))
 - **Dynamic tariffs**: usage and return price per kWh
 - **Connected batteries**: each battery reported by the meter (e.g. a Zendure) shows up as its own device, with `Power` and `State of Charge` sensors
 - **Device page**: all sensors are grouped under a single Powerbaas device, with a separate "Diagnostics" section for WiFi strength, firmware version, uptime and last update
@@ -63,6 +64,35 @@ meter device. Both sensors are disabled by default:
 
 - `Solar Current Power` - Current solar power production (W)
 - `Solar Total Production` - Total solar energy produced (kWh)
+
+### Solar from Home Assistant to the P1
+
+Already have your solar panels in Home Assistant (e.g. through your
+inverter's integration)? The P1's firmware has a *custom solar* integration
+that polls an HTTP URL for `{"current": <W>, "total": <Wh>}`. Home Assistant
+can serve that URL for you:
+
+1. Turn on **Send solar from Home Assistant to the P1**, when adding the P1
+   or later under its **Configure** options.
+2. Pick a power sensor (current production) and an energy sensor (total
+   production). Both are required. kW, kWh and MWh are converted to W and Wh.
+   The P1's own Solar sensors are left out of the list, since the P1 would
+   then read its own value back.
+3. Enter the URL shown in the last step (`http://<home-assistant>:8123/api/webhook/<token>`)
+   in the custom solar integration of the P1. You can see it again later under
+   the solar checkbox on the P1's **Configure** screen.
+
+How the URL behaves:
+
+- No login is needed: the random token in the URL is what grants access,
+  so treat the URL like a password. It stays the same when you run the
+  options again, or turn the feature off and back on.
+- It only answers requests from your local network (not through Nabu Casa
+  or the internet), and only `GET`.
+- While one of the two sensors has no value (`unavailable`/`unknown`), it
+  answers HTTP 503 instead of a made-up 0.
+- Home Assistant must be reachable over plain `http://` from the P1. If you
+  only expose Home Assistant over HTTPS, the P1 can't use this URL.
 
 ## Connected batteries
 

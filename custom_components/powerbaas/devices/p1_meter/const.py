@@ -97,3 +97,17 @@ BATTERY_SENSORS = [
     ("Power", "power", "W", "power", "measurement", "mdi:flash"),
     ("State of Charge", "soc", "%", "battery", "measurement", None),
 ]
+
+# Solar from Home Assistant -> P1 meter. The P1 firmware's "custom solar"
+# integration polls an HTTP URL for {"current": <W>, "total": <Wh>}; when
+# enabled, the integration serves that JSON from a local-only HA webhook,
+# built from two HA sensors the user picks (see solar_push.py).
+CONF_SOLAR_PUSH_ENABLED = "solar_push_enabled"
+CONF_SOLAR_POWER_ENTITY = "solar_power_entity"
+CONF_SOLAR_ENERGY_ENTITY = "solar_energy_entity"
+CONF_SOLAR_WEBHOOK_ID = "solar_webhook_id"
+
+# unique_id suffixes (after the entry_id) of the P1's own Solar sensors -
+# excluded from the source pickers, since feeding them back into the P1
+# would make it read its own value.
+P1_SOLAR_UNIQUE_ID_SUFFIXES = ("_solarreading_current", "_solarreading_total")

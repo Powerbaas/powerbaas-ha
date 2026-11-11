@@ -18,7 +18,35 @@
         "data": {
           "host": "Host URL",
           "name": "Name",
-          "scan_interval": "Update interval (seconds, 2-60)"
+          "scan_interval": "Update interval (seconds, 2-60)",
+          "solar_push_enabled": "Send solar from Home Assistant to the P1"
+        },
+        "data_description": {
+          "solar_push_enabled": "Already have your solar panels in Home Assistant? The P1 can read them through its custom solar integration. You'll pick the sensors in the next step."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar source",
+        "description": "Pick the sensors of your solar panels. The P1 reads these values through a local URL. kW, kWh and MWh are converted to W and Wh automatically.",
+        "data": {
+          "solar_power_entity": "Current power",
+          "solar_energy_entity": "Total production"
+        },
+        "data_description": {
+          "solar_power_entity": "A power sensor (W or kW)",
+          "solar_energy_entity": "An energy sensor (Wh, kWh or MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL for the P1",
+        "description": "Enter the URL below in the custom solar integration of the Powerbaas P1. You can see it again later under Configure on the P1.",
+        "data": {
+          "solar_url": "Solar URL for the P1",
+          "solar_preview": "What the P1 gets right now"
+        },
+        "data_description": {
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password.",
+          "solar_preview": "HTTP 503 means one of the sensors has no value right now. The P1 gets values again once it does."
         }
       },
       "boiler_controller": {
@@ -157,7 +185,9 @@
       "device_in_use": "This module is already configured",
       "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
       "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
-      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'"
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'",
+      "invalid_power_unit": "This sensor doesn't report power in W or kW",
+      "invalid_energy_unit": "This sensor doesn't report energy in Wh, kWh or MWh"
     },
     "abort": {
       "already_configured": "This Powerbaas device is already configured",
@@ -172,7 +202,37 @@
         "description": "Update the host URL for your Powerbaas device",
         "data": {
           "host": "Host URL",
-          "scan_interval": "Update interval (seconds, 2-60)"
+          "scan_interval": "Update interval (seconds, 2-60)",
+          "solar_push_enabled": "Send solar from Home Assistant to the P1",
+          "solar_url": "Solar URL for the P1"
+        },
+        "data_description": {
+          "solar_push_enabled": "Already have your solar panels in Home Assistant? The P1 can read them through its custom solar integration. You'll pick the sensors in the next step.",
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password."
+        }
+      },
+      "p1_meter_solar": {
+        "title": "Solar source",
+        "description": "Pick the sensors of your solar panels. The P1 reads these values through a local URL. kW, kWh and MWh are converted to W and Wh automatically.",
+        "data": {
+          "solar_power_entity": "Current power",
+          "solar_energy_entity": "Total production"
+        },
+        "data_description": {
+          "solar_power_entity": "A power sensor (W or kW)",
+          "solar_energy_entity": "An energy sensor (Wh, kWh or MWh)"
+        }
+      },
+      "p1_meter_solar_url": {
+        "title": "Solar URL for the P1",
+        "description": "Enter the URL below in the custom solar integration of the Powerbaas P1. You can see it again later under Configure on the P1.",
+        "data": {
+          "solar_url": "Solar URL for the P1",
+          "solar_preview": "What the P1 gets right now"
+        },
+        "data_description": {
+          "solar_url": "Enter this URL in the custom solar integration of the P1. It only works on your local network: treat it like a password.",
+          "solar_preview": "HTTP 503 means one of the sensors has no value right now. The P1 gets values again once it does."
         }
       },
       "device_config": {
@@ -290,7 +350,9 @@
       "device_in_use": "This module is already configured",
       "taper_incomplete": "Fill in both 'Slow charging from' and its charge power, or leave both empty",
       "taper_needs_soc_sensor": "Slow charging needs the battery charge level sensor",
-      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'"
+      "taper_not_below_full": "'Slow charging from' must be below 'Battery counts as full from'",
+      "invalid_power_unit": "This sensor doesn't report power in W or kW",
+      "invalid_energy_unit": "This sensor doesn't report energy in Wh, kWh or MWh"
     }
   },
   "entity": {
