@@ -3,7 +3,7 @@
   "name": "Powerbaas",
   "codeowners": ["@XiloXL", "@reinos"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["webhook"],
   "documentation": "https://github.com/Powerbaas/powerbaas-ha",
   "integration_type": "device",
   "iot_class": "local_polling",

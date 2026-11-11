@@ -13,6 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ...const import DOMAIN, OFFLINE_AFTER_CONSECUTIVE_FAILURES
+from . import solar_push
 from .const import (
     BATTERY_API_PATH,
     BATTERY_SCAN_INTERVAL,
@@ -185,6 +186,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     )
     await battery_coordinator.async_config_entry_first_refresh()
 
+    # Last, so a ConfigEntryNotReady above never leaves a webhook registered
+    # (a retried setup would otherwise hit "handler already defined").
+    solar_push.async_register(hass, entry)
+
     return {
         "coordinator": coordinator,
         "battery_coordinator": battery_coordinator,
@@ -194,5 +199,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Clear any open offline repair issue; platform unload is handled by the caller."""
+    """Clear any open offline repair issue and the solar webhook; platform unload is handled by the caller."""
+    solar_push.async_unregister(hass, entry)
     issue_registry.async_delete_issue(hass, DOMAIN, f"p1_meter_offline_{entry.entry_id}")
