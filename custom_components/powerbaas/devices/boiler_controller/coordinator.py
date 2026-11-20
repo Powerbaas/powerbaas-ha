@@ -392,6 +392,31 @@ class BoilerControllerCoordinator(DataUpdateCoordinator):
 
         await self._async_update()
 
+    async def _async_power_sensor_reported(self, event: Event) -> None:
+        """Handle a power sensor reporting the same value again.
+
+        Auto mode only reacts to a changed value (see
+        _async_power_sensor_changed). But a start held back for its
+        confirming second reading (see _async_update) would wait forever on a
+        steady surplus: the sensor reporting the same value again is that
+        second reading.
+        """
+        if not self._auto_start_pending:
+            return
+        data = self.data or {}
+        if data.get("calibration_active") or data.get("control_mode") != BOILER_MODE_AUTO:
+            return
+        # The same once-per-poll_interval throttle as for a changed value.
+        if self._last_auto_update is not None:
+            elapsed = (dt_util.utcnow() - self._last_auto_update).total_seconds()
+            if elapsed < DEFAULT_POLL_INTERVAL:
+                return
+        _LOGGER.debug(
+            "Power sensor %s reported the same value again; confirming the pending start",
+            event.data.get("entity_id"),
+        )
+        await self._async_update()
+
     async def _async_update(self, *args: Any) -> None:
         """Apply the current control mode to the device."""
         try:
