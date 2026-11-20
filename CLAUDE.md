@@ -6,7 +6,7 @@ testing.
 
 ## Repo layout
 
-- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `climate.py`, `light.py`, `switch.py`).
+- `custom_components/powerbaas/` - the Home Assistant integration (HACS package). Each device type (`devices/boiler_controller/`, `devices/p1_meter/`, `devices/airco_bridge/`, `devices/rgb/`, `devices/power_temp/`) has its own client, controller/coordinator, and entity platform files (`sensor.py`, `number.py`, `select.py`, `climate.py`, `light.py`, `switch.py`).
 
 ## Conventions
 
@@ -59,6 +59,11 @@ config/options flow field for it.
 Powerbaas RGB's poll interval is the same kind of fixed default
 (`DEFAULT_POLL_INTERVAL` 10s in `rgb/const.py`) - there is no
 config/options flow field for it.
+
+PowerTemp's poll interval is the same kind of fixed default
+(`DEFAULT_POLL_INTERVAL` 10s in `power_temp/const.py`). The firmware has its
+own `pollIntervalS` setting in `/api/config`, but that's how often the device
+samples its sensors, not how often Home Assistant polls it.
 
 This matters for anything that scales behavior off a device's poll/scan
 interval (e.g. request timeouts) - only the P1 meter currently has a real
@@ -143,6 +148,12 @@ alongside the polled `status`/`system` fields, pushed via
 `async_set_updated_data()`; `_async_update_data()` carries those
 command-driven keys forward from the previous cycle on every poll, since
 they aren't re-fetched from the device.
+
+PowerTemp's coordinator likewise owns its config commands (thresholds,
+delta, per-port sensor config via `POST /api/config`) and the "new sensor
+found" repair issues. The firmware replaces the whole `sensors` list on POST,
+so per-port changes re-read `/api/config` from the device right before
+writing (`_async_update_sensor_list`) rather than trusting the last poll.
 
 None of the existing device types special-case a specific "not found"
 signal (e.g. HTTP 404) differently from other failures (timeout, connection
