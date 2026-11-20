@@ -9,7 +9,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv, issue_registry
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_state_report_event,
+)
 from homeassistant.loader import async_get_integration
 
 from ...const import DOMAIN
@@ -60,6 +63,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict:
             hass,
             coordinator._tracked_entities,
             coordinator._async_power_sensor_changed,
+        )
+    )
+    entry.async_on_unload(
+        async_track_state_report_event(
+            hass,
+            coordinator._tracked_entities,
+            coordinator._async_power_sensor_reported,
         )
     )
     entry.async_on_unload(
