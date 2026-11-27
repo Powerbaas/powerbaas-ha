@@ -68,7 +68,7 @@ If the battery sensors are unavailable, the controller falls back to plain grid 
 
 **Safety margin** (W, default 0) is always left unused in Auto mode, with or without a battery - a buffer against brief grid import while the boiler is still ramping down after e.g. a cloud.
 
-The **Available Surplus** diagnostic sensor shows the surplus Auto mode is working with after battery priority and safety margin; the **Status** sensor's `battery_stalled` attribute shows whether the battery's headroom is currently released to the boiler.
+The **Available Surplus** diagnostic sensor shows how many watts the boiler can still add (positive) or must give back (negative) on top of what it draws now, after battery priority and safety margin: Auto mode sets the boiler to its current power plus this value. Around 0 W while the boiler runs means it takes exactly what's left. The **Status** sensor's `battery_stalled` attribute shows whether the battery's headroom is currently released to the boiler.
 
 ## SSR
 
@@ -90,4 +90,4 @@ If the module is unreachable when Home Assistant sets up (or reloads) the integr
 - `Status` (sensor) - high-level state (Idle / Running / Calibration / Error / Offline) plus diagnostic attributes
 - Device sensors read from the module's `/api/status`: power, heating percentage, internal/external temperature (external is unavailable when no probe is mapped to that role), energy
 - Diagnostic sensors read from the module's `/api/system`: firmware version, WiFi strength, up-since, IP address
-- `Available Surplus` (diagnostic sensor, W) - Auto mode's surplus after battery priority and safety margin; unavailable outside Auto mode
+- `Available Surplus` (diagnostic sensor, W) - what the boiler can still add (+) or must give back (−) on top of its current power, after battery priority and safety margin; unavailable outside Auto mode
